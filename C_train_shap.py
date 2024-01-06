@@ -29,19 +29,25 @@ from ray.tune.logger import UnifiedLogger
 
 from B_env_shap import ShapleyEnv as Env            # custom environment
 
-# To save results in Juelich
-juelich_dir = '/p/scratch/ccstdl/cipolina-kun/A-COALITIONS/'
-# Define paths
-home_dir = '/Users/lucia/ray_results'
-juelich_dir = '/p/scratch/ccstdl/cipolina-kun/A-COALITIONS'
-hostname = socket.gethostname() # Determine the correct path
-output_dir = juelich_dir if 'juwels' in hostname.lower() else home_dir
+# Define paths where to save results
+home_dir       = '/Users/lucia/ray_results'
+juelich_dir    = '/p/scratch/ccstdl/cipolina-kun/A-COALITIONS'
+university_dir = '/home/zeta/Desktop/lucia/coalitions/coalitional_bargaining/ray_results'
+# Get the hostname to determine the correct path
+hostname = socket.gethostname().lower()
+# Determine the output directory based on the hostname
+if 'juwels' in hostname:
+    output_dir = juelich_dir
+elif 'zeta' in hostname:
+    output_dir = university_dir
+else:
+    output_dir = home_dir
 
-def custom_logger_creator(config = {"logdir": output_dir}):
+def custom_logger_creator( config = {"logdir": output_dir}):
     """Creates a custom logger with the specified path."""
-    logdir = output_dir # Define the directory where you want to store the logs
-    os.makedirs(logdir, exist_ok=True)  # Ensure the directory exists
-    return UnifiedLogger(config, logdir, loggers=None) # Return a UnifiedLogger object with the specified directory
+    logdir = config.get("logdir", os.path.expanduser("~/ray_results")) # Define the directory where you want to store the logs
+    os.makedirs(logdir, exist_ok=True)                                 # Ensure the directory exists
+    return UnifiedLogger(config, logdir, loggers=None)                 # Return a UnifiedLogger object with the specified directory
 
 #***************************************************************************************
 ######################################### TRAIN #########################################
