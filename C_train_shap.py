@@ -41,7 +41,7 @@ if 'juwels' in hostname:
 elif 'zeta' in hostname:
     output_dir = university_dir
 else:
-    output_dir = home_dir
+    output_dir = os.path.expanduser("~/ray_results") # Default output directory
 
 def custom_logger_creator( config = {"logdir": output_dir}):
     """Creates a custom logger with the specified path."""
