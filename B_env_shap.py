@@ -32,10 +32,10 @@ from ray.rllib.utils.typing import MultiAgentDict #To avoid empty policy
 from itertools import permutations
 import logging
 
-logging.basicConfig(filename='distance_log.log', level=logging.INFO, format='%(message)s')
+#logging.basicConfig(filename='ray_info.log', level=logging.INFO, format='%(message)s')
 
 #RLLIB divides the total number of steps (i.e. batch size) across the workers
-NUM_CPUS  = os.cpu_count() #NUM_CPUS-1 = num_rollour _workers. to calculate the num_steps on each batch (for the cv learning) - 8 on my machine
+NUM_CPUS  = 4 # os.cpu_count() #NUM_CPUS-1 = num_rollour _workers. to calculate the num_steps on each batch (for the cv learning) - 8 on my machine
 
 
 # Define the characteristic function as a class
@@ -85,17 +85,20 @@ class ShapleyEnv(MultiAgentEnv):
         super().__init__()
         self.step_count            = 0
         self.num_agents            = config_dict.get('num_agents',2)
-        self.batch_size            = config_dict.get('batch_size', 2000) #for the CV learning - update the CV when a batch is full
-        char_config_dict           = config_dict.get('char_func_dict',{}) #characteristic function config dict
-        self.manual_distance_lst   = config_dict.get('manual_distances',None) #for the curriculum learning
+        self.batch_size            = config_dict.get('batch_size', 2000)       # for the CV learning - update the CV when a batch is full
+        char_config_dict           = config_dict.get('char_func_dict',{})      # characteristic function config dict
+        self.manual_distance_lst   = config_dict.get('manual_distances',None)  # for the curriculum learning
         self.cyclic_iter           = itertools.cycle(self.manual_distance_lst)
         self.char_func             = CharacteristicFunction(char_config_dict)
-        self.agent_lst             = list(range(self.num_agents)) # [0, 1, 2, ..., num_agents-1]
-        self._agent_ids            = set(self.agent_lst)          # Required by RLLIB (key word- don't change)
+        self.agent_lst             = list(range(self.num_agents))              # [0, 1, 2, ..., num_agents-1]
+        self._agent_ids            = set(self.agent_lst)                       # Required by RLLIB (key word- don't change)
         self.reward_dict           = {}
         self.current_coalitions    = {i: np.array([1 if i == j else 0 for j in range(self.num_agents)]) for i in range(self.num_agents)} #start on singletons - will be overriden later
         self.max_steps             = config_dict.get('max_steps',4000)
-        self.shapley_values        = {agent: 0 for agent in self.agent_lst} #for the shapley value
+        self.shapley_values        = {agent: 0 for agent in self.agent_lst}    # for the shapley value
+
+        self.accumulated_rewards = {agent: 0 for agent in self.agent_lst}     # To match RLLIB's per-agent output
+
 
         # SHAPLEY COMMENTED OUT FOR NOW
         #self.required_deltas = self.generate_required_deltas() #for the shapley value
@@ -135,18 +138,6 @@ class ShapleyEnv(MultiAgentEnv):
         if seed is None:
             _, seed = seeding.np_random()
         return [seed]
-
-    def generate_valid_coalitions_old(self):
-        '''# Generate all possible coalitions for each agent as list of 0's and 1's. 1 means the agent is in the coalition.'''
-        #need to test this
-        self.valid_coalitions = {}
-        for agent in range(self.num_agents):
-            agent_coalitions = [np.zeros(self.num_agents, dtype=int)]  # Add the singleton coalition
-            for coalition in product([0, 1], repeat=self.num_agents):
-                if coalition[agent] == 1:  # Include only coalitions that contain the agent
-                    agent_coalitions.append(np.array(coalition))
-            self.valid_coalitions[agent] = agent_coalitions
-        return self.valid_coalitions #used for testing
 
     # For ridesharing
     def generate_valid_coalitions(self):
@@ -212,7 +203,7 @@ class ShapleyEnv(MultiAgentEnv):
                 # Save to a logging text file - note that RLLIB resets the env several times before training for real
         #log_entry = f"Step: {self.step_count}, Distances: {self.distance_lst}"
         #logging.info(log_entry)
-        print('Step:', self.step_count, 'Distances:', self.distance_lst)
+        #print('Step:', self.step_count, 'Distances:', self.distance_lst)
 
 
     def _get_observation(self):
@@ -301,7 +292,7 @@ class ShapleyEnv(MultiAgentEnv):
             if action ==1:
                self.reward_dict[self.current_agent] = 10 #delta_value #1
             else: #if we stay where we are - repeat the reward from the current state
-                self.reward_dict[self.current_agent] = -100 # -delta_value #-1
+                self.reward_dict[self.current_agent] =  -100 # -delta_value #-1
                 # if it is the first time on this state, and it gets rejected, dict is empty and reward = 0. This is buggy.
 
         # Shapley for each agent - only meaningful for Grand Coalitions - meaningless if there is a coalition structure
@@ -310,7 +301,7 @@ class ShapleyEnv(MultiAgentEnv):
         # SHAPLEY NOT USED FOR NOW
         #self._calculate_shapley(delta_coalitions, delta_value)
 
-        return self.reward_dict[self.current_agent] # used for inference
+        return self.reward_dict[self.current_agent]
 
     def _update_coalitions(self, action):
         '''If coalition accepted - Update agent's current coalition (i.e. state)'''
@@ -366,11 +357,18 @@ class ShapleyEnv(MultiAgentEnv):
     # RESET
     ##################################################################
     def reset(self, *, seed=None, options=None):
+        ''' Reset and start a new episode
+            Number of resets = number of episodes per iteration
+        '''
 
         self.truncated_dict             = {agent: False for agent in self.agent_lst}   # whether they have been placed in a coalition
         self.truncated_dict['__all__']  = False
         self.terminated_dict            = self.truncated_dict.copy()
-        self.reward_dict                = {agent: 0 for agent in self.agent_lst}
+        self.truncated_dict             = {agent: False for agent in self.agent_lst}   # whether they have been placed in a coalition
+        self.truncated_dict['__all__']  = False
+        self.terminated_dict            = self.truncated_dict.copy()
+        self.reward_dict                = {agent: 0 for agent in self.agent_lst}        # each episode is an independent trial
+        self.accumulated_rewards = {agent: 0 for agent in self.agent_lst}     # Reset accumulated rewards for a new episode - to match RLLIB's per-agent output
 
         #COALITIONS - Initial coalitions for each agent.
         self.generate_valid_coalitions()      # populates self.valid_coalitions. This list shrinks as coalitions are proposed by the env.
@@ -420,7 +418,10 @@ class ShapleyEnv(MultiAgentEnv):
              # Obs for next agent in play {[coalitions][distances]}
              self.next_observation = self._get_observation() #CV learning - distances are updated at the end of the batch
 
-        return {self.current_agent:self.next_observation}, self.reward_dict , self.terminated_dict, self.truncated_dict, {}
+        # Update the reward only for the active agent
+        self.accumulated_rewards[self.current_agent] += self.reward_dict[self.current_agent] # calculate the accumulated reward for the active agent
+
+        return {self.current_agent:self.next_observation}, self.reward_dict , self.terminated_dict, self.truncated_dict,{}
 
 
     def render(self,acting_agent):

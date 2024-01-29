@@ -1,8 +1,8 @@
 ''' Trains a custom env
 Works on Ray 2.6'''
 
-
 import os, logging, sys, json, re, socket
+import datetime
 import gymnasium as gym
 import numpy as np
 import random
@@ -18,10 +18,11 @@ from typing import Dict                                               #for callb
 from ray.rllib.algorithms.callbacks import DefaultCallbacks           # for callbacks
 from ray.rllib.env import BaseEnv                                     # for callbacks
 from ray.rllib.evaluation import RolloutWorker, Episode               # for callbacks
-from ray.rllib.policy import Policy                                    #for callbacks
+from ray.rllib.policy import Policy                                   #for callbacks
 from ray.air.integrations.wandb import WandbLoggerCallback
 from ray.tune.logger import UnifiedLogger
 
+TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d-%H%M")
 
 #current_script_dir  = os.path.dirname(os.path.realpath(__file__)) # Get the current script directory path
 #parent_dir          = os.path.dirname(current_script_dir)         # Get the parent directory (one level up)
@@ -29,8 +30,8 @@ from ray.tune.logger import UnifiedLogger
 
 from B_env_shap import ShapleyEnv as Env            # custom environment
 
+'''
 # Define paths where to save results
-home_dir       = '/Users/lucia/ray_results'
 juelich_dir    = '/p/scratch/ccstdl/cipolina-kun/A-COALITIONS'
 university_dir = '/home/zeta/Desktop/lucia/coalitions/coalitional_bargaining/ray_results'
 # Get the hostname to determine the correct path
@@ -43,12 +44,15 @@ elif 'zeta' in hostname:
 else:
     output_dir = os.path.expanduser("~/ray_results") # Default output directory
 
+output_dir = os.path.expanduser("~/ray_results") # Default output directory
+
 def custom_logger_creator( config = {"logdir": output_dir}):
     """Creates a custom logger with the specified path."""
     logdir = config.get("logdir", os.path.expanduser("~/ray_results")) # Define the directory where you want to store the logs
     os.makedirs(logdir, exist_ok=True)                                 # Ensure the directory exists
     return UnifiedLogger(config, logdir, loggers=None)                 # Return a UnifiedLogger object with the specified directory
-
+'''
+output_dir = os.path.expanduser("~/ray_results") # Default output directory
 #***************************************************************************************
 ######################################### TRAIN #########################################
 
@@ -57,25 +61,61 @@ def custom_logger_creator( config = {"logdir": output_dir}):
 # Get reward per agent (not provided in RLLIB)
 # WandB Callbacks - Just logs results and metrics on each iteration
 #***********************************************************************
-class On_step_callback(DefaultCallbacks):
-         '''To get rewards per agent
+class Custom_callback(DefaultCallbacks):
+    '''To get rewards per agent - data is stored in episode.custom_metrics
             Needs to be run with default 'verbose = 3' value to be displayed on screen
              #https://github.com/ray-project/ray/blob/master/rllib/evaluation/metrics.py#L229-L231
-         '''
-         def on_episode_step(self, worker: RolloutWorker, base_env: BaseEnv,
+             episode.agent_rewards in RLLIB  contains the accumulated rewards for each agent per episode.
+    '''
+    '''Taylored for turn-based environments where each agent acts once per episode.'''
+
+
+    def on_train_result(self, *, algorithm, result: dict, **kwargs):
+         # Method called at the end of each training iteration to average rewards per iteration
+        episodes_this_iter = result.get("episodes_this_iter", 0)
+
+        if episodes_this_iter > 0:
+            num_agents = algorithm.workers.local_worker().env_context['num_agents']
+
+            for agent_id in range(num_agents):
+                key = f"reward_policy{agent_id}"
+                if key in result["custom_metrics"]:
+                    # Focus on the last 'episodes_this_iter' entries for the current iteration - given that RLLIB accumulates rewards across episodes
+                    recent_rewards = result["custom_metrics"][key][-episodes_this_iter:]
+                    average_reward = sum(recent_rewards) / episodes_this_iter
+                    result["custom_metrics"][key] = average_reward
+
+        #print("Updated custom metrics with averages:", result["custom_metrics"])
+
+
+
+    def on_episode_end(self, worker: RolloutWorker, base_env: BaseEnv,
+                   policies: Dict[str, Policy], episode: Episode,
+                   **kwargs):
+        # Accumulate rewards per episode (i.e. sums rewwards across steps until the reset calls  - i.e. episode ends)
+        env = base_env.get_sub_environments()[0]  # Use get_sub_environments() instead of get_unwrapped()
+        accumulated_rewards = env.accumulated_rewards
+
+        for agent_id, reward in accumulated_rewards.items():
+            key = f"reward_policy{agent_id}"
+            if key in episode.custom_metrics:
+                episode.custom_metrics[key] += reward
+            else:
+                episode.custom_metrics[key] = reward
+       # print("Accumulated rewards:", accumulated_rewards)
+
+
+        ''' If it weren't a turn-based env, we could use this one:
+        def on_episode_step(self, worker: RolloutWorker, base_env: BaseEnv,
                        policies: Dict[str, Policy], episode: Episode,
                        **kwargs):
-            '''Calculates the reward per agent at the STEP of the episode. Displays on Tensorboard and on the console   '''
-
+            #Calculates and shows the SUM of the reward dict per agent at each STEP of the episode. Displays on Tensorboard and on the console
             #The advantage of these ones is that it calculates the Max-Mean-Min and it prints on TB
             #NOTE: custom_metrics only take scalars
-            my_dict = {}  #Needs this as metric name needs to be a string
             for key, values in episode.agent_rewards.items():
-                my_dict[str(key)] = values
-
-            episode.custom_metrics.update(my_dict)
-
-
+                episode.custom_metrics[f"reward_{key}"] = values
+                print(f"reward_{key}:", values)
+        '''
 
 #****************************************************************************************
 class RunRay:
@@ -85,13 +125,12 @@ class RunRay:
 
         current_dir      = os.path.dirname(os.path.realpath(__file__))
         self.excel_path  = os.path.join(current_dir, 'A_results', 'output.xlsx')
-        self.jason_path  = os.path.join(current_dir, 'best_checkpoint.json')
+        self.jason_path  = os.path.join(current_dir, 'best_checkpoint_'+TIMESTAMP+'.json')
         self.clear_excel(self.excel_path)
         self.clear_json(self.jason_path)
         self.setup_dict = setup_dict
         self.custom_env_config = custom_env_config
         self.experiment_name   = experiment_name
-
 
     def setup(self):
         '''Setup trainer dict and train model '''
@@ -130,17 +169,18 @@ class RunRay:
                           lr                = lr_start,lr_schedule = [[0, lr_start],[lr_time, lr_end]], #good
                           _enable_learner_api=False #to keep using the old RLLIB API
                         )\
-                .rollouts(num_rollout_workers=NUM_CPUS-1, num_envs_per_worker=1)
+                .rollouts(num_rollout_workers=NUM_CPUS-1, num_envs_per_worker=1, rollout_fragment_length='auto')
                 .framework("torch")
                 .rl_module(_enable_rl_module_api=False) #to keep using the old ModelCatalog API
                 .multi_agent(  #EXTRA FOR THE POLICY MAPPING
                         policies = policy_dict(), #dict of policies
                         policy_mapping_fn = policy_mapping_fn #which pol in 'dict of pols' maps to which agent
                 )\
-                .callbacks(On_step_callback)\
-                .debugging(seed=seed, logger_creator = custom_logger_creator )   #setting seed for reproducibility
+                .callbacks(Custom_callback)\
+                .debugging(seed=seed )   #setting seed for reproducibility
+                .reporting(keep_per_episode_custom_metrics=True)
             )
-
+#.debugging(seed=seed, logger_creator = custom_logger_creator )
         #_____________________________________________________________________________________________
         # Setup Trainer
         #_____________________________________________________________________________________________
@@ -149,42 +189,40 @@ class RunRay:
         tuner  = tune.Tuner("PPO", param_space = trainer_config,
                                    run_config = air.RunConfig(
                                                 name =  self.experiment_name,
-                                                stop = {"training_iteration": train_iteration}, # metric used for reporting
+                                                stop = {"training_iteration": train_iteration}, # "iteration" will be the metric used for reporting
                                                 checkpoint_config=air.CheckpointConfig(checkpoint_frequency=100, checkpoint_at_end=True,
                                                                                        num_to_keep= 5 #keep only the last 5
                                                                                        ),
-                                                #callbacks = [callbacks],  # WandB local_mode = False only!
-                                                verbose= 1, #less output while training - 3 for seeing custom_metrics better
+                                                #callbacks = [wandb_callbacks],  # WandB local_mode = False only!
+                                                verbose= 3, #0 for less output while training - 3 for seeing custom_metrics better
                                                 local_dir = output_dir
                                             )
                                     )
 
-        result_grid = tuner.fit()
+        result_grid = tuner.fit() #train the model
 
         # Get reward per policy
         best_result_grid = result_grid.get_best_result(metric="episode_reward_mean", mode="max")
 
-        # Display training results
-        for key, value in best_result_grid.metrics["policy_reward_mean"].items():     # Print rewards per policy to console
-            print(f"reward_mean_{key}:", value)
-
+        # Print best training rewards per policy to console
+        print("BEST ITERATION:")
+        for key, value in best_result_grid.metrics["custom_metrics"].items():
+            print(f"mean_{key}:", value)
         return  best_result_grid
 
 
     def train(self):
         ''' Calls Ray to train model  '''
-        if ray.is_initialized(): ray.shutdown()
-        ray.init(local_mode=True,include_dashboard=False, ignore_reinit_error=True,log_to_driver=False) #local_mode=True it might run faster, used to debug. Set to false for WandB
+        #if ray.is_initialized(): ray.shutdown()
+        #ray.init(local_mode=True,include_dashboard=False, ignore_reinit_error=True,log_to_driver=False, _temp_dir = '/p/home/jusers/cipolina-kun1/juwels/ray_tmp') # Default output directory') #local_mode=True it might run faster, used to debug. Set to false for WandB
 
-        res_list   = ["training_iteration",'episode_len_mean','episode_reward_mean' ] #columns saved into excel
         seeds_lst  = self.setup_dict['seeds_lst']
-
         for _seed in seeds_lst:
             self.set_seeds(_seed)
             print("we're on seed: ", _seed)
             self.setup_dict['seed'] = _seed
             best_res_grid      = self.setup()
-            result_dict        = self.save_results(best_res_grid,res_list,self.excel_path,self.jason_path, _seed) #print results, saves checkpoints and metrics
+            result_dict        = self.save_results(best_res_grid,self.excel_path,self.jason_path, _seed) #print results, saves checkpoints and metrics
 
         ray.shutdown()
         return result_dict
@@ -192,30 +230,44 @@ class RunRay:
     #____________________________________________________________________________________________
     #  Analize results and save files
     #____________________________________________________________________________________________
-    def save_results(self,best_result, res_list,excel_path, json_path, _seed):
 
-        # PROCESS RESULTS
-        # Print Best Results to console
-        result_df  = best_result.metrics_dataframe #Brings the results saved on the 'progress.csv' file as dataframe
-        print("BEST RESULTS:")
-        print(result_df[res_list]) #dataframe slicing
+    def save_results(self, best_result_grid, excel_path, json_path, _seed):
+        '''Save results to Excel file and save best checkpoint to JSON file'''
 
-        # SAVE BEST CHECKPOINT (i.e. the last) onto JSON filer
+        # Process results
+        df = best_result_grid.metrics_dataframe
+
+        # Step 1: Identify columns for new average rewards per policy
+        custom_reward_cols = [col for col in df.columns if col.startswith('custom_metrics/reward_policy')]
+
+        # Identify columns for losses and entropies
+        loss_cols = [col for col in df.columns if 'learner_stats/total_loss' in col]
+        entropy_cols = [col for col in df.columns if 'learner_stats/entropy' in col]
+
+        # Additional columns to include
+        additional_cols = ["training_iteration", "episode_len_mean", "episode_reward_mean"]
+
+        # Step 2: Create a new DataFrame with the desired columns
+        desired_columns = custom_reward_cols + loss_cols + entropy_cols + additional_cols
+        final_df = df[desired_columns]
+
+        # Step 3: Save the new DataFrame to an Excel file
+        with pd.ExcelWriter(excel_path, engine='openpyxl', mode='a' if os.path.exists(excel_path) else 'w') as writer:
+            final_df.to_excel(writer, sheet_name=f'Seed_{_seed}', index=False)
+
+        # PRINT best iteration results to console
+        print(df[additional_cols])
+
+        # Save best checkpoint (i.e. the last) onto JSON filer
         best_checkpoints = []
-        best_checkpoint = best_result.checkpoint #returns a folder path, not a file.
+        best_checkpoint = best_result_grid.checkpoint #returns a folder path, not a file.
         path_match      = re.search(r'Checkpoint\(local_path=(.+)\)', str(best_checkpoint))
         checkpoint_path = path_match.group(1) if path_match else None
         best_checkpoints.append({"seed": _seed, "best_checkpoint": checkpoint_path})
-
-        # Save checkpoints
-        with open(json_path, "a") as f:
+        with open(json_path, "a") as f:  # Save checkpoints to file
             json.dump(best_checkpoints, f, indent=4)
 
-        # Save results onto Excel
-        with pd.ExcelWriter(excel_path, engine='openpyxl',mode='a') as writer:
-                result_df[res_list].to_excel(writer, sheet_name=str(_seed), index=False)
-
-        return {'checkpoint_path': checkpoint_path, 'result_df': result_df}
+        return {'checkpoint_path': checkpoint_path, 'result_df': final_df}
 
     #____________________________________________________________________________________________
     # Aux functions

@@ -1,7 +1,13 @@
+import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import statistics
+
+'''Generates BoxPlot and agents response metrics'''
+
+current_dir = os.path.dirname(os.path.realpath(__file__))
+TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d-%H%M")
 
 def read_excel_data(file_path):
     xls = pd.ExcelFile(file_path)
@@ -40,34 +46,58 @@ def generate_summary_table(accuracy_across_tabs):
         std_dev_accuracy = statistics.stdev(accuracies) if len(accuracies) > 1 else 0
         summary_list.append([agent, mean_accuracy, std_dev_accuracy])
 
-    summary_table = pd.DataFrame(summary_list, columns=['Agent', 'Mean Accuracy (%)', 'Std Dev'])
-    summary_table.to_excel('summary_table.xlsx', index=False)
+    summary_table = pd.DataFrame(summary_list, columns=['Agent', 'Test Accuracy', 'Std Dev'])
+    summary_table.to_excel(current_dir+'/A_results/summary_table.xlsx', index=False)
     return summary_table
 
+
 def generate_boxplot(boxplot_data):
-    boxplot_df = pd.DataFrame(boxplot_data, columns=['Agent', 'Accuracy Ratio (%)'])
+    boxplot_df = pd.DataFrame(boxplot_data, columns=['Agent', 'Test Accuracy'])
     plt.figure(figsize=(10, 6))
-    bp = boxplot_df.boxplot(column='Accuracy Ratio (%)', by='Agent', patch_artist=True, return_type='dict', showmeans=True, meanline=True, meanprops={'marker':'o', 'markerfacecolor':'white', 'markeredgecolor':'black'})
-    #plt.title('Boxplot of Accuracy Ratio by Agent Across All Coalitions')
+    bp = boxplot_df.boxplot(column='Test Accuracy', by='Agent', patch_artist=True, return_type='dict', showmeans=True, meanline=True, meanprops={'marker':'o', 'markerfacecolor':'white', 'markeredgecolor':'black'})
     plt.suptitle('')
     plt.xlabel('Agent')
-    plt.ylabel('Accuracy Ratio (%)')
-    for box in bp['Accuracy Ratio (%)']['boxes']:
+    plt.ylabel('Accuracy (%)')
+
+    # Styling the boxes (representing the trained policy) in red
+    for box in bp['Test Accuracy']['boxes']:
         box.set(color='red', linewidth=2)
         box.set(facecolor='red')
+
     agent_names = sorted(boxplot_df['Agent'].unique())
     plt.xticks(range(1, len(agent_names) + 1), agent_names)
     plt.ylim(bottom=45)  # Set the y-axis limit starting from 45 %
-    plt.axhline(y=50, color='blue', linestyle='--', linewidth=2) # Add a thick dashed line at y=50 %
-    plt.savefig('boxplot.pdf', bbox_inches='tight')
 
+    # Adding horizontal lines and labels
+    random_policy_line = plt.axhline(y=50, color='blue', linestyle='--', linewidth=2, label='Random Policy')
+    r_5_line = plt.axhline(y=67, color='green', linestyle='--', linewidth=2, label='r = 5%')
+    r_10_line = plt.axhline(y=63, color='orange', linestyle='--', linewidth=2, label='r = 10%')
+
+    # Creating a legend and positioning it at the bottom right
+    from matplotlib.patches import Patch
+    trained_policy_patch = Patch(color='red', label='Trained Policy')
+    plt.legend(handles=[random_policy_line, r_5_line, r_10_line, trained_policy_patch], loc='lower right')
+
+    plt.savefig(current_dir+'/A_results/boxplot_' + TIMESTAMP+'.pdf', bbox_inches='tight')
+
+
+
+
+
+
+
+# ====================
 def main():
-    file_path = 'response_data.xlsx'
-    data = read_excel_data(file_path)
+    '''This is the starting point of the script called by the Runner script'''
+    file_path =  os.path.join(current_dir, 'A_results', 'response_data.xlsx')
+    data      = read_excel_data(file_path)
     summary_data, boxplot_data, accuracy_across_tabs = calculate_metrics(data)
     summary_table = generate_summary_table(accuracy_across_tabs)
     generate_boxplot(boxplot_data)
     print(summary_table)
 
+
+# ====================
+# ====================
 if __name__ == "__main__":
     main()
