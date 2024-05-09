@@ -1,4 +1,10 @@
-''' script to compare the clustering method with the benchmark method'''
+''' script to compare the clustering method with the benchmark method
+
+RESULT: Maximum aggregate accuracy over 100 simulations of epsilons: 70.50%, Best EPSILON: 4.44
+
+OBS: for each of the 100 epsilons, we iterated 100 times, meaning 100 different random distances
+
+'''
 
 
 import random
@@ -41,7 +47,7 @@ def run_simulations(num_simulations, num_agents, line_length, epsilon, k, alpha,
         if custom_distances is not None and i < len(custom_distances):
             distances = custom_distances[i]
         else:
-            distances = place_agents_benchmark(num_agents, line_length)
+            distances = place_agents_benchmark(num_agents, line_length) #  Places agents randomly on a line.
 
         rounded_positions = [round(pos, 2) for pos in distances]
         #print("Rounded Agent positions:", rounded_positions)
@@ -75,9 +81,11 @@ if __name__ == '__main__':
     # Constants
     LINE_LENGTH = 50
     NUM_AGENTS = 3  #with 5 agents doesn't work. Even in Jewels!
-    EPSILON = LINE_LENGTH * 0.05  # Example epsilon value  #63,5%
-    EPSILON = LINE_LENGTH * 0.1  # Example epsilon value  #68%
-    NUM_SIMULATIONS = 100  # Number of simulations to run
+    #EPSILON = LINE_LENGTH * 0.05  # Example epsilon value  #63,5%
+    #EPSILON = LINE_LENGTH * 0.1  # Example epsilon value  #68%
+    EPSILON = None  # we will do a grid search over epsilon values
+    num_simulated_epsilons = 100 # number of epsilons in the grid search
+    NUM_SIMULATIONS = 100  # Number of simulations to run over one epsilon
     k               = 20  # Scaling constant for characteristic function
     alpha           = 1  # Scaling constant for characteristic function
     custom_distances = None
@@ -100,7 +108,7 @@ if __name__ == '__main__':
         num_runs = NUM_SIMULATIONS
 
     # Do a grid search over EPSILON values
-    num_runs = NUM_SIMULATIONS if EPSILON else len(np.linspace(0.05, 0.1, 10))
+    num_runs = NUM_SIMULATIONS if EPSILON else len(np.linspace(0.05, 0.9, num_simulated_epsilons))
 
     # Initialize result list and epsilon
     result_lst = []
