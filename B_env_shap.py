@@ -35,7 +35,7 @@ import logging
 #logging.basicConfig(filename='ray_info.log', level=logging.INFO, format='%(message)s')
 
 #RLLIB divides the total number of steps (i.e. batch size) across the workers
-NUM_CPUS  = 4 # os.cpu_count() #NUM_CPUS-1 = num_rollour _workers. to calculate the num_steps on each batch (for the cv learning) - 8 on my machine
+NUM_CPUS  = 20 # os.cpu_count() #NUM_CPUS-1 = num_rollour _workers. to calculate the num_steps on each batch (for the cv learning)
 
 
 # Define the characteristic function as a class
@@ -247,7 +247,7 @@ class ShapleyEnv(MultiAgentEnv):
         self.valid_coalitions[self.current_agent] = [coal for coal in self.valid_coalitions[self.current_agent] if not np.array_equal(coal, self.new_coalition)]
         # DISTANCES
         # Update distances based on Curriculum Learning
-        if self.step_count == np.round((self.batch_size/NUM_CPUS-1),0): # CPUS-1 = num_rollout_workers. Approx nbr of steps per one batch -update only when batch is full. RLLIB divides the steps by the num_workers
+        if self.step_count == np.round((self.batch_size/NUM_CPUS-1),0): # CPUS-1 = num_rollout_workers. Approx nbr of steps per one batch - update only when batch is full. RLLIB divides the steps by the num_workers
            self.update_distances()    # Either add randomness to distances - or select next distance from the curriculum list
 
         return {
