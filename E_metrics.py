@@ -76,7 +76,7 @@ def generate_boxplot(boxplot_data):
 
     # Existing horizontal lines
     random_policy_line = plt.axhline(y=50, color='blue', linestyle='--', linewidth=2, label='Random Policy')
-    r_5_line = plt.axhline(y=67, color='green', linestyle='--', linewidth=2, label='cluster = 5%')
+    r_5_line = plt.axhline(y=67, color='green', linestyle='--', linewidth=2, label='cluster r= 5%')
 
     # Adding the new horizontal line for "Tabular QL"
     tabular_ql_line = plt.axhline(y=20, color='purple', linestyle='--', linewidth=2, label='MARL QL')
