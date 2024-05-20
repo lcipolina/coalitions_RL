@@ -5,13 +5,12 @@ import random
 import matplotlib.pyplot as plt
 
 
-#
 
 ''' RUNS BETTER ON COLAB!!!! - COULNT MAKE IT CONVERGE - Not used at the end
 
 
 Implements metod by Cote et al for Coalition Formation
-It's just a simple Qlearning
+It's just a simple TABULAR Qlearning
 
 Let's consider a simplified example where there are three possible coalitions: Coalition 0, Coalition 1, and Coalition 2.
 Rows represent the coalition the agent is currently in
