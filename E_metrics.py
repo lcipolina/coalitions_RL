@@ -5,7 +5,12 @@ import os
 import statistics
 from matplotlib.patches import Patch
 
-'''Generates BoxPlot and agents response metrics'''
+'''Generates BoxPlot and agents response metrics.
+Script generates 'response_data.xls' file in A_results folder
+From that data it generates a boxplot and summary_table.xls in the same folder
+The boxplot is generated directly from the 'response_data.xls'
+The summary_table is just for information purpopses
+'''
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d-%H%M")
