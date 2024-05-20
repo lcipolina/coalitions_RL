@@ -1,0 +1,21 @@
+[
+    {
+        "seed": 42,
+        "best_checkpoint": "/p/home/jusers/cipolina-kun1/juwels/ray_results/shapley_rl/PPO_ShapleyEnv_0fad1_00000_0_2024-01-22_20-40-14/checkpoint_000250"
+    }
+][
+    {
+        "seed": 100,
+        "best_checkpoint": "/p/home/jusers/cipolina-kun1/juwels/ray_results/shapley_rl/PPO_ShapleyEnv_9c8e4_00000_0_2024-01-22_20-51-19/checkpoint_000250"
+    }
+][
+    {
+        "seed": 200,
+        "best_checkpoint": "/p/home/jusers/cipolina-kun1/juwels/ray_results/shapley_rl/PPO_ShapleyEnv_27f1a_00000_0_2024-01-22_21-02-22/checkpoint_000250"
+    }
+][
+    {
+        "seed": 400,
+        "best_checkpoint": "/p/home/jusers/cipolina-kun1/juwels/ray_results/shapley_rl/PPO_ShapleyEnv_2e034_00000_0_2024-01-22_21-24-01/checkpoint_000250"
+    }
+]
