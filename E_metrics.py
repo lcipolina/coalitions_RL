@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import statistics
+from matplotlib.patches import Patch
 
 '''Generates BoxPlot and agents response metrics'''
 
@@ -46,26 +47,44 @@ def generate_summary_table(accuracy_across_tabs):
         std_dev_accuracy = statistics.stdev(accuracies) if len(accuracies) > 1 else 0
         summary_list.append([agent, mean_accuracy, std_dev_accuracy])
 
-    summary_table = pd.DataFrame(summary_list, columns=['Agent', 'Mean Accuracy (%)', 'Std Dev'])
+    summary_table = pd.DataFrame(summary_list, columns=['Agent', 'Test Accuracy', 'Std Dev'])
     summary_table.to_excel(current_dir+'/A_results/summary_table.xlsx', index=False)
     return summary_table
 
+
 def generate_boxplot(boxplot_data):
-    boxplot_df = pd.DataFrame(boxplot_data, columns=['Agent', 'Accuracy (%)'])
-    plt.figure(figsize=(10, 6))
+    boxplot_df = pd.DataFrame(boxplot_data, columns=['Agent', 'Test Accuracy'])
+    plt.figure(figsize=(10, 5))
     bp = boxplot_df.boxplot(column='Test Accuracy', by='Agent', patch_artist=True, return_type='dict', showmeans=True, meanline=True, meanprops={'marker':'o', 'markerfacecolor':'white', 'markeredgecolor':'black'})
-    #plt.title('Boxplot of Accuracy Ratio by Agent Across All Coalitions')
     plt.suptitle('')
     plt.xlabel('Agent')
-    plt.ylabel('Test Accuracy (%)')
-    for box in bp['Accuracy (%)']['boxes']:
+    plt.ylabel('Accuracy (%)')
+
+    # Styling the boxes in red
+    for box in bp['Test Accuracy']['boxes']:
         box.set(color='red', linewidth=2)
-        box.set(facecolor='red')
+        box.set(facecolor='red' )
+
     agent_names = sorted(boxplot_df['Agent'].unique())
     plt.xticks(range(1, len(agent_names) + 1), agent_names)
-    plt.ylim(bottom=45)  # Set the y-axis limit starting from 45 %
-    plt.axhline(y=50, color='blue', linestyle='--', linewidth=2) # Add a thick dashed line at y=50 %
+    plt.ylim(bottom=0)  # Set the y-axis limit starting from 0 %
+
+    # Existing horizontal lines
+    random_policy_line = plt.axhline(y=50, color='blue', linestyle='--', linewidth=2, label='Random Policy')
+    r_5_line = plt.axhline(y=67, color='green', linestyle='--', linewidth=2, label='cluster = 5%')
+
+    # Adding the new horizontal line for "Tabular QL"
+    tabular_ql_line = plt.axhline(y=20, color='purple', linestyle='--', linewidth=2, label='MARL QL')
+
+    # Creating a legend and positioning it at the bottom right
+    trained_policy_patch = Patch(color='red', label='DRL(ours)')
+    plt.legend(handles=[random_policy_line, r_5_line, tabular_ql_line, trained_policy_patch], loc='lower right')
+
     plt.savefig(current_dir+'/A_results/boxplot_' + TIMESTAMP+'.pdf', bbox_inches='tight')
+
+
+
+
 
 # ====================
 def main():
