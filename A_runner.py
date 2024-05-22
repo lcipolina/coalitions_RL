@@ -54,7 +54,8 @@ class CoalitionRunner:
            self.train_distance_lst = self.open_distance_file(train_path)
         # TEST DISTANCES
         if test_path is None:
-            # less nbr of observations as we only update every iteration. Num_obs = num_iterations -1
+           # less nbr of observations as we only update every iteration. Num_obs = num_iterations -1
+           # I've commented out the histogram print
            self.test_distance_lst =self.distance_gen.generate_testing_distances_n_plot(train_distance_lst =self.train_distance_lst) #same as train dists but moved by an epsilon
 
     # RUN THE ENTIRE TRAINING LOOP ====================================

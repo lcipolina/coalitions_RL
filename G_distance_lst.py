@@ -93,7 +93,7 @@ class DistanceGenerator:
 
         self.write_to_file(self.testing_distances, filename='testing_dist')   # Save to a txt file
 
-        self.plot_agent_histograms() # plots the histogram of the training and testing distances
+        #self.plot_agent_histograms() # plots the histogram of the training and testing distances
 
         return self.testing_distances
 
