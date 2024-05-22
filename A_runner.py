@@ -12,7 +12,7 @@ from G_distance_lst import DistanceGenerator
 
 
 
-class ShapleyRunner:
+class CoalitionRunner:
     def __init__(self, setup_dict, char_func_dict, distance_gen_config):
         # Generate list of list of rnd distances and their testing counterparts - they should be generated at the same time to be chained.
         # revisit_steps should be less or equal num_steps
@@ -110,7 +110,7 @@ class ShapleyRunner:
 # CONFIGS
 ##################################################
 
-def run_shapley_runner(train_n_eval = True, train_path = None,test_path  = None, checkpoint_path_trained = None):
+def run_coalition_runner(train_n_eval = True, train_path = None,test_path  = None, checkpoint_path_trained = None):
     '''
     Passess the config variables to RLLIB's trainer
     :input: If we want to use a pre-set list of distances - for reproducibility    '''
@@ -153,7 +153,7 @@ def run_shapley_runner(train_n_eval = True, train_path = None,test_path  = None,
     }
 
     # Use the training distances that worked better - diversified points
-    runner             = ShapleyRunner(setup_dict, char_func_dict, distance_gen_config)
+    runner             = CoalitionRunner(setup_dict, char_func_dict, distance_gen_config)
 
     if train_n_eval:
         # TRAIN (the 'test_path' logic is TODO)
@@ -180,7 +180,7 @@ if __name__ == '__main__':
     train_path  = '/Users/lucia/Desktop/LuciaArchive/000_A_MY_RESEARCH/00-My_Papers/Ridesharing/000-A-RidesharingMARL/00-Codes/coalitions/A-coalitions_paper/dist_train_jan22.txt'
     test_path  = '/Users/lucia/Desktop/LuciaArchive/000_A_MY_RESEARCH/00-My_Papers/Ridesharing/000-A-RidesharingMARL/00-Codes/coalitions/A-coalitions_paper/dist_test_jan22.txt'
 
-    # ALSO CHANGE inside HERE: run_shapley_runner for "train and eval" or "eval only"
+    # ALSO CHANGE inside HERE: run_coalition_runner for "train and eval" or "eval only"
 
     # TRAIN n Inference
     train_n_eval = True
@@ -193,7 +193,7 @@ if __name__ == '__main__':
     # =====================
 
 
-    run_shapley_runner(train_n_eval,
+    run_coalition_runner(train_n_eval,
                        train_path = train_path,
                        test_path  = test_path,
                        checkpoint_path_trained =checkpoint_path_trained )
