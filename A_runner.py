@@ -133,9 +133,9 @@ def run_coalition_runner(train_n_eval = True, train_path = None,test_path  = Non
         'training_iterations': 3, #10*29,# (10*25),  this makes a lot of difference!!    # we need ~20 per each distance to learn 100%. Iterations = num_distances * 20
         'train_batch_size'   : 500, #2900, #2800,# 2900,   # we need approx 2200 steps to learn 100%
         'seeds_lst'          :[42], # [42,100, 200, 300, 400],#[42,100, 200, 300, 400],
-        'experiment_name'    :'to_delete',
-        'cpu_nodes'          : 8 #change it on SLURM and in 'B_env.py' NUM_CPUs script as well  - more than this brakes the custom callbacks (other things work)
-    }             
+        'experiment_name'    :'coalition_rl',
+        'cpu_nodes'          : 8 #change it on SLURM  - more than ~38 brakes the custom callbacks (other things work)
+    }
 
     char_func_dict = {
         'mode': 'ridesharing',
