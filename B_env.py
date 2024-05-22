@@ -24,14 +24,13 @@ from gym.utils import seeding
 import numpy as np
 from itertools import product
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
-from ray.rllib.utils.typing import MultiAgentDict #To avoid empty policy
-from itertools import permutations
+from ray.rllib.utils.typing import MultiAgentDict #To avoid empty policy space
 import logging
 
 #logging.basicConfig(filename='ray_info.log', level=logging.INFO, format='%(message)s')
 
 #RLLIB divides the total number of steps (i.e. batch size) across the workers
-NUM_CPUS  = 50 # os.cpu_count() #NUM_CPUS-1 = num_rollour _workers. to calculate the num_steps on each batch (for the cv learning)
+NUM_CPUS  = 8 # os.cpu_count() #NUM_CPUS-1 = num_rollour _workers. to calculate the num_steps on each batch (for the cv learning)
 
 
 # Define the characteristic function as a class
