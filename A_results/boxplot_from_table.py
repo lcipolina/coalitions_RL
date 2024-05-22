@@ -13,7 +13,8 @@ file_path = '/Users/lucia/Desktop/LuciaArchive/000_A_MY_RESEARCH/00-My_Papers/Ri
 df = pd.read_excel(file_path, sheet_name='Sheet1')
 
 
-
+# Only with mean and variance provided in the table is not enough to generate boxplots.
+# We need to recover the original datapoints somehow - since we don't have them, we can simulate them.
 # Simulate data points based on mean and standard deviation
 np.random.seed(0)  # For reproducibility
 simulated_data = []
