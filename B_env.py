@@ -1,8 +1,6 @@
 '''Environment to calculate Coalition Structure Generation Game
    - Agents are selected in round-robin fashion and offered coalitions to join by the env
    - Agents don't need to know the characteristic function as it is given as the reward by the env ('deltas')
-   - Since the deltas are marginal contributions, the Shapley val is obtained as a byproduct....
-
 
    The steps are as follows:
     1. Agents are selected in round-robin fashion
@@ -14,8 +12,6 @@
     6. Environment selects the next agent in round-robin fashion
     etc
 
-    4. The env calculates the marginal contribution of the coalition (delta) - this is the reward for the agent
-    --> THESE ARE NOT THE MARGINAL CONTRIB OF THE PLAYING AGENT! for Shapley it needs to be reallocated!! (problem)
 
    Works on Ray 2.6
 '''
@@ -91,13 +87,8 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
         self.reward_dict           = {}
         self.current_coalitions    = {i: np.array([1 if i == j else 0 for j in range(self.num_agents)]) for i in range(self.num_agents)} #start on singletons - will be overriden later
         self.max_steps             = config_dict.get('max_steps',4000)
-        self.shapley_values        = {agent: 0 for agent in self.agent_lst}    # for the shapley value
 
         self.accumulated_rewards = {agent: 0 for agent in self.agent_lst}     # To match RLLIB's per-agent output
-
-
-        # SHAPLEY COMMENTED OUT FOR NOW
-        #self.required_deltas = self.generate_required_deltas() #for the shapley value
 
         self.reset() # Resets time,Resets valid coals. Stores the current coalition for each agent. Selects current agent
 
@@ -148,22 +139,6 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
             self.valid_coalitions[agent] = agent_coalitions
         return self.valid_coalitions           # Used for testing
 
-    def generate_required_deltas(self):
-        ''' List of required Marginal Contribs (difference of coalitions - not values-) for each agent needed for Shapley
-            Only works for Grand Coalitions, as we need to know the coalition structure in advance'''
-        self.required_deltas = {agent: [] for agent in range(self.num_agents)}
-        self.perms = list(permutations(self.agent_lst)) # Generate all permutations of agent indices
-        for perm in self.perms:
-            for idx, agent in enumerate(perm):
-                coalition_without_agent = [0] * self.num_agents
-                coalition_with_agent = [0] * self.num_agents
-                for a in perm[:idx]:
-                    coalition_without_agent[a] = 1
-                for a in perm[:idx + 1]:
-                    coalition_with_agent[a] = 1
-                delta = (coalition_with_agent, coalition_without_agent)
-                self.required_deltas[agent].append(delta)
-        return self.required_deltas
 
     def generate_initial_distances(self):
         '''Generate an INITIAL random distance vector for each agent
@@ -291,12 +266,6 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
                 self.reward_dict[self.current_agent] =  -100 # -delta_value #-1
                 # if it is the first time on this state, and it gets rejected, dict is empty and reward = 0. This is buggy.
 
-        # Shapley for each agent - only meaningful for Grand Coalitions - meaningless if there is a coalition structure
-        delta_coalitions = (self.new_coalition.tolist(), self.current_coalitions[self.current_agent].tolist()) #which coals are involved
-
-        # SHAPLEY NOT USED FOR NOW
-        #self._calculate_shapley(delta_coalitions, delta_value)
-
         return self.reward_dict[self.current_agent]
 
     def _update_coalitions(self, action):
@@ -305,26 +274,6 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
            self.current_coalitions[self.current_agent] = self.new_coalition  # Update the current coalition for this agent
            #print('Current coalition - acting agent:', self.current_coalitions[self.current_agent])
 
-    def _calculate_shapley(self, delta_coalitions, delta_value):
-        '''Assign the delta value to the appropriate agent'''
-        # Whether all needed deltas have been already assigned (as the method calculates more than needed)
-        all_deltas = all(len(deltas) == 0 for deltas in self.required_deltas.values())
-        if not all_deltas:
-           for agent in range(self.num_agents):
-               if delta_coalitions in self.required_deltas[agent]:
-                self.shapley_values[agent] += delta_value
-
-                #print('Agent:', agent)
-                #print('delta_coalitions:', delta_coalitions)
-                #print('Delta value:', delta_value)
-                self.required_deltas[agent].remove(delta_coalitions)
-                #print('shapleys on the fly:', self.shapley_values)
-
-    def calculate_final_shapley(self):
-        for agent in self.shapley_values:
-            self.shapley_values[agent] /= len(self.perms)
-        #print('Final Shapley values:', self.shapley_values)
-        return self.shapley_values
 
     def _select_playing_agent(self):
         '''Selects the next agent to play
@@ -440,7 +389,7 @@ def test_env(custom_env_config):
     # Just pass a dummy action so we can run the step method
 
 
-    env = ShapleyEnv(custom_env_config)
+    env = DynamicCoalitionsEnv(custom_env_config)
     reward_accumulators = {i: 0 for i in range(env.num_agents)}
     num_episodes = 1
 
@@ -459,8 +408,6 @@ def test_env(custom_env_config):
 
     average_rewards = {agent: total_reward / num_episodes for agent, total_reward in reward_accumulators.items()}
     print('avg rewards per agent:', average_rewards)
-    #print('Initial required deltas:', env.required_deltas)
-    print('Calculated Shapley values:', env.calculate_final_shapley())
 
 
 
