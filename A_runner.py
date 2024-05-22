@@ -34,7 +34,8 @@ class CoalitionRunner:
             'char_func_dict'  : char_func_dict,
             'manual_distances': self.train_distance_lst,
             'max_steps'       : 10000, #not used
-            'batch_size'      : setup_dict['train_batch_size']
+            'batch_size'      : setup_dict['train_batch_size'],
+            'cpu_nodes'       : self.setup_dict['cpu_nodes']
         }
 
 
@@ -87,7 +88,7 @@ def run_coalition_runner():
         'train_batch_size'   : 2800,# 2900,   # we need approx 2200 steps to learn 100%
         'seeds_lst'          : [42,100, 200, 300, 400],#[42,100, 200, 300, 400],
         'experiment_name'    :'coalition_rl',
-        'cpu_nodes'          : 35 #more than this brakes the custom callbacks (other things work)
+        'cpu_nodes'          : 35 #change it on SLURM as well - more than ~35 this brakes the custom callbacks (other things work)
     }
 
     char_func_dict = {

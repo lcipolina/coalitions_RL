@@ -30,7 +30,7 @@ import logging
 #logging.basicConfig(filename='ray_info.log', level=logging.INFO, format='%(message)s')
 
 #RLLIB divides the total number of steps (i.e. batch size) across the workers
-NUM_CPUS  = 50 # os.cpu_count() #NUM_CPUS-1 = num_rollour _workers. to calculate the num_steps on each batch (for the cv learning)
+#NUM_CPUS-1 = num_rollour _workers. to calculate the num_steps on each batch (for the cv learning)
 
 
 # Define the characteristic function as a class
@@ -79,6 +79,7 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
         self.batch_size            = config_dict.get('batch_size', 2000)       # for the CV learning - update the CV when a batch is full
         char_config_dict           = config_dict.get('char_func_dict',{})      # characteristic function config dict
         self.manual_distance_lst   = config_dict.get('manual_distances',None)  # for the curriculum learning
+        self.cpu_nodes             = config_dict.get('cpu_nodes',os.cpu_count()) # number of CPUs to divide the batch size
         self.cyclic_iter           = itertools.cycle(self.manual_distance_lst)
         self.char_func             = CharacteristicFunction(char_config_dict)
         self.agent_lst             = list(range(self.num_agents))              # [0, 1, 2, ..., num_agents-1]
@@ -216,7 +217,7 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
         self.valid_coalitions[self.current_agent] = [coal for coal in self.valid_coalitions[self.current_agent] if not np.array_equal(coal, self.new_coalition)]
         # DISTANCES
         # Update distances based on Curriculum Learning
-        if self.step_count == np.round((self.batch_size/NUM_CPUS-1),0): # CPUS-1 = num_rollout_workers. Approx nbr of steps per one batch - update only when batch is full. RLLIB divides the steps by the num_workers
+        if self.step_count == np.round((self.batch_size/(self.cpu_nodes-1)),0): # CPUS-1 = num_rollout_workers. Approx nbr of steps per one batch - update only when batch is full. RLLIB divides the steps by the num_workers
            self.update_distances()    # Either add randomness to distances - or select next distance from the curriculum list
 
         return {
