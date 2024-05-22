@@ -44,7 +44,7 @@ os.environ["RAY_AIR_LOCAL_CACHE_DIR"] = output_dir
 
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d-%H%M")
 
-from B_env_shap import ShapleyEnv as Env            # custom environment
+from B_env import DynamicCoalitionsEnv as Env            # custom environment
 
 
 # ####################################################
