@@ -1,8 +1,6 @@
 #!/p/scratch/laionize/cache-kun1/miniconda3/envs/ray_2.6/bin/python
 
-
-from B_env_shap import ShapleyEnv as Env
-from C_train_shap import RunRay as train_policy
+from C_train import RunRay as train_policy
 from D_deploy import Inference as evaluate_policy
 from E_metrics import main as metrics
 from E_graphing import graph_reward_n_others
@@ -11,7 +9,7 @@ from G_distance_lst import DistanceGenerator
 # A_runner.py
 
 
-class ShapleyRunner:
+class CoalitionRunner:
     def __init__(self, setup_dict, char_func_dict, distance_gen_config):
         # Generate list of list of rnd distances and their testing counterparts - they should be generated at the same time to be chained.
         # revisit_steps should be less or equal num_steps
@@ -83,12 +81,12 @@ class ShapleyRunner:
 # CONFIGS
 ##################################################
 
-def run_shapley_runner():
+def run_coalition_runner():
     setup_dict = {
         'training_iterations': 10*25,# (10*25),  this makes a lot of difference!!    # we need ~20 per each distance to learn 100%. Iterations = num_distances * 20
         'train_batch_size'   : 2800,# 2900,   # we need approx 2200 steps to learn 100%
         'seeds_lst'          : [42,100, 200, 300, 400],#[42,100, 200, 300, 400],
-        'experiment_name'    :'shapley_rl',
+        'experiment_name'    :'coalition_rl',
         'cpu_nodes'          : 35 #more than this brakes the custom callbacks (other things work)
     }
 
@@ -107,7 +105,7 @@ def run_shapley_runner():
         'num_steps_testing'   : 5 # how many distances to generate
     }
 
-    runner          = ShapleyRunner(setup_dict, char_func_dict, distance_gen_config)
+    runner          = CoalitionRunner(setup_dict, char_func_dict, distance_gen_config)
 
     # TRAIN
     #checkpoint_path_ = runner.train()
@@ -120,4 +118,4 @@ def run_shapley_runner():
     runner.evaluate_custom_dist() #needs the checkpoint!!
 
 if __name__ == '__main__':
-    run_shapley_runner()
+    run_coalition_runner()

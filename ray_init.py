@@ -7,7 +7,7 @@ ray.init(address='auto',include_dashboard=False, ignore_reinit_error=True,log_to
 #ray.init(local_mode = True,_temp_dir = '/p/home/jusers/cipolina-kun1/juwels/ray_tmp') #>> ray stop (execute before)
 
 # Call the function from A_runner.py
-A_runner.run_shapley_runner()
+A_runner.run_coalition_runner()
 
 # Shutdown Ray
 ray.shutdown()
