@@ -13,12 +13,12 @@ from ray import air, tune
 from ray.rllib.utils.framework import try_import_torch
 torch, nn = try_import_torch()
 from ray.rllib.algorithms.ppo import PPOConfig
-from ray.rllib.policy.policy import PolicySpec                        # for policy mapping
-from typing import Dict                                               # for callbacks
+from ray.rllib.policy.policy import PolicySpec                        #For policy mapping
+from typing import Dict                                               #for callbacks
 from ray.rllib.algorithms.callbacks import DefaultCallbacks           # for callbacks
 from ray.rllib.env import BaseEnv                                     # for callbacks
 from ray.rllib.evaluation import RolloutWorker, Episode               # for callbacks
-from ray.rllib.policy import Policy                                   # for callbacks
+from ray.rllib.policy import Policy                                   #for callbacks
 from ray.air.integrations.wandb import WandbLoggerCallback
 from ray.tune.logger import UnifiedLogger
 
@@ -61,59 +61,26 @@ output_dir = os.path.expanduser("~/ray_results") # Default output directory
 # Get reward per agent (not provided in RLLIB)
 # WandB Callbacks - Just logs results and metrics on each iteration
 #***********************************************************************
-class Custom_callback(DefaultCallbacks):
-    '''To get rewards per agent - data is stored in episode.custom_metrics
+class On_step_callback(DefaultCallbacks):
+         '''To get rewards per agent - data is stored in episode.custom_metrics
             Needs to be run with default 'verbose = 3' value to be displayed on screen
              #https://github.com/ray-project/ray/blob/master/rllib/evaluation/metrics.py#L229-L231
              episode.agent_rewards in RLLIB  contains the accumulated rewards for each agent per episode.
-    '''
-    '''Taylored for turn-based environments where each agent acts once per episode.'''
-
-
-    def on_train_result(self, *, algorithm, result: dict, **kwargs):
-         # Method called at the end of each training iteration to average rewards per iteration
-        episodes_this_iter = result.get("episodes_this_iter", 0)
-
-        if episodes_this_iter > 0:
-            num_agents = algorithm.workers.local_worker().env_context['num_agents']
-
-            for agent_id in range(num_agents):
-                key = f"reward_policy{agent_id}"
-                if key in result["custom_metrics"]:
-                    # Focus on the last 'episodes_this_iter' entries for the current iteration - given that RLLIB accumulates rewards across episodes
-                    recent_rewards = result["custom_metrics"][key][-episodes_this_iter:]
-                    average_reward = sum(recent_rewards) / episodes_this_iter
-                    result["custom_metrics"][key] = average_reward
-
-        #print("Updated custom metrics with averages:", result["custom_metrics"])
-
-    def on_episode_end(self, worker: RolloutWorker, base_env: BaseEnv,
-                   policies: Dict[str, Policy], episode: Episode,
-                   **kwargs):
-        # Accumulate rewards per episode (i.e. sums rewwards across steps until the reset calls  - i.e. episode ends)
-        env = base_env.get_sub_environments()[0]  # Use get_sub_environments() instead of get_unwrapped()
-        accumulated_rewards = env.accumulated_rewards
-
-        for agent_id, reward in accumulated_rewards.items():
-            key = f"reward_policy{agent_id}"
-            if key in episode.custom_metrics:
-                episode.custom_metrics[key] += reward
-            else:
-                episode.custom_metrics[key] = reward
-       # print("Accumulated rewards:", accumulated_rewards)
-
-
-        ''' If it weren't a turn-based env, we could use this one:
-        def on_episode_step(self, worker: RolloutWorker, base_env: BaseEnv,
+         '''
+         def on_episode_step(self, worker: RolloutWorker, base_env: BaseEnv,
                        policies: Dict[str, Policy], episode: Episode,
                        **kwargs):
-            #Calculates and shows the SUM of the reward dict per agent at each STEP of the episode. Displays on Tensorboard and on the console
+            '''Calculates the sum of reward per agent at the STEP of the episode. Displays on Tensorboard and on the console   '''
             #The advantage of these ones is that it calculates the Max-Mean-Min and it prints on TB
             #NOTE: custom_metrics only take scalars
+            my_dict = {}  #Needs this as metric name needs to be a string
             for key, values in episode.agent_rewards.items():
+             #   my_dict[str(key)] = values
                 episode.custom_metrics[f"reward_{key}"] = values
-                print(f"reward_{key}:", values)
-        '''
+            #episode.custom_metrics.update(my_dict)
+
+
+
 
 #****************************************************************************************
 class RunRay:
@@ -174,7 +141,7 @@ class RunRay:
                         policies = policy_dict(), #dict of policies
                         policy_mapping_fn = policy_mapping_fn #which pol in 'dict of pols' maps to which agent
                 )\
-                .callbacks(Custom_callback)\
+                .callbacks(On_step_callback)\
                 .debugging(seed=seed )   #setting seed for reproducibility
                 .reporting(keep_per_episode_custom_metrics=True)
             )
@@ -192,7 +159,7 @@ class RunRay:
                                                                                        num_to_keep= 5 #keep only the last 5
                                                                                        ),
                                                 #callbacks = [wandb_callbacks],  # WandB local_mode = False only!
-                                                verbose= 1, #0 for less output while training - 3 for seeing custom_metrics better
+                                                verbose= 3, #0 for less output while training - 3 for seeing custom_metrics better
                                                 local_dir = output_dir
                                             )
                                     )
@@ -202,10 +169,9 @@ class RunRay:
         # Get reward per policy
         best_result_grid = result_grid.get_best_result(metric="episode_reward_mean", mode="max")
 
-        # Print best training rewards per policy to console
-        print("BEST ITERATION:")
-        for key, value in best_result_grid.metrics["custom_metrics"].items():
-            print(f"mean_{key}:", value)
+        # Display training results
+        for key, value in best_result_grid.metrics["policy_reward_mean"].items():     # Print rewards per policy to console
+            print(f"reward_mean_{key}:", value)
         return  best_result_grid
 
 
@@ -228,35 +194,35 @@ class RunRay:
     #____________________________________________________________________________________________
     #  Analize results and save files
     #____________________________________________________________________________________________
-
-    def save_results(self, best_result_grid, excel_path, json_path, _seed):
+    def save_results(self,best_result_grid,excel_path, json_path, _seed):
         '''Save results to Excel file and save best checkpoint to JSON file'''
 
-        # Process results
-        df = best_result_grid.metrics_dataframe
-
-        # Step 1: Identify columns for new average rewards per policy
-        custom_reward_cols = [col for col in df.columns if col.startswith('custom_metrics/reward_policy')]
-
-        # Identify columns for losses and entropies
-        loss_cols = [col for col in df.columns if 'learner_stats/total_loss' in col]
-        entropy_cols = [col for col in df.columns if 'learner_stats/entropy' in col]
-
+        # PROCESS RESULTS
+        df =  best_result_grid.metrics_dataframe # Adds a dimension to report the metric requested on the requested metric in the {stop: } dict (in my case it was iterations)
+        # Step 1: Identify unique policy names and construct column names
+        policy_names = set()
+        for col in df.columns:
+            if 'policy_reward_mean/' in col:
+                policy_name = col.split('/')[1]  # Get the policy name part
+                if 'policy' in policy_name and policy_name != 'policy_reward_mean':
+                    policy_names.add(policy_name)
+        # Construct columns for each policy
+        reward_cols = [f'policy_reward_mean/{policy}' for policy in policy_names]
+        loss_cols = [f'info/learner/{policy}/learner_stats/total_loss' for policy in policy_names if f'info/learner/{policy}/learner_stats/total_loss' in df.columns]
+        entropy_cols = [f'info/learner/{policy}/learner_stats/entropy' for policy in policy_names if f'info/learner/{policy}/learner_stats/entropy' in df.columns]
         # Additional columns to include
         additional_cols = ["training_iteration", "episode_len_mean", "episode_reward_mean"]
-
         # Step 2: Create a new DataFrame with the desired columns
-        desired_columns = custom_reward_cols + loss_cols + entropy_cols + additional_cols
+        desired_columns = reward_cols + loss_cols + entropy_cols + additional_cols
         final_df = df[desired_columns]
-
         # Step 3: Save the new DataFrame to an Excel file
         with pd.ExcelWriter(excel_path, engine='openpyxl', mode='a' if os.path.exists(excel_path) else 'w') as writer:
-            final_df.to_excel(writer, sheet_name=f'Seed_{_seed}', index=False)
+             final_df.to_excel(writer, sheet_name=f'Seed_{_seed}', index=False)
 
-        # PRINT best iteration results to console
+        print("BEST RESULTS:")
         print(df[additional_cols])
 
-        # Save best checkpoint (i.e. the last) onto JSON filer
+        # SAVE BEST CHECKPOINT (i.e. the last) onto JSON filer
         best_checkpoints = []
         best_checkpoint = best_result_grid.checkpoint #returns a folder path, not a file.
         path_match      = re.search(r'Checkpoint\(local_path=(.+)\)', str(best_checkpoint))

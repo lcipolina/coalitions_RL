@@ -231,7 +231,7 @@ class Inference:
         plt.ylabel('Game Index', fontsize=14)
         plt.title('Final Coalitions for Each Distance Game', fontsize=16)
         plt.yticks(range(len(responses_by_distance)))  # Show y-axis ticks for each run
-        plt.xlim(0, 0.5*100)  # Set x-axis limits
+        plt.xlim(0, 0.6*100)  # Set x-axis limits
         plt.savefig(current_dir+'/A_results/final_coals_graph_' +TIMESTAMP+'.pdf')
        # plt.show()
 

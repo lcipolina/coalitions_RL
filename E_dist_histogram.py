@@ -74,7 +74,7 @@ def plot_agent_training_and_testing_correct_legend(training_data, testing_data, 
                                 markersize=10, markerfacecolor=testing_color)
 
     plt.title(f'Agent {agent_index} Positions with Training and Testing Occurrences')
-    plt.xlabel('Agents Location')
+    plt.xlabel('Distance from Origin')
     plt.ylabel('Count of Occurrences')
     plt.ylim(0, max_occurrences + 1)  # Adjust y-axis limits
     plt.legend(handles=[training_legend, testing_legend])

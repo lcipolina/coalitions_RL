@@ -3,8 +3,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import statistics
+from matplotlib.patches import Patch
 
-'''Generates BoxPlot and agents response metrics'''
+'''Generates BoxPlot and agents response metrics.
+Script generates 'response_data.xls' file in A_results folder
+From that data it generates a boxplot and summary_table.xls in the same folder
+The boxplot is generated directly from the 'response_data.xls'
+The summary_table is just for information purpopses
+'''
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d-%H%M")
@@ -59,28 +65,27 @@ def generate_boxplot(boxplot_data):
     plt.xlabel('Agent')
     plt.ylabel('Accuracy (%)')
 
-    # Styling the boxes (representing the trained policy) in red
+    # Styling the boxes in red
     for box in bp['Test Accuracy']['boxes']:
         box.set(color='red', linewidth=2)
-        box.set(facecolor='red')
+        box.set(facecolor='red' )
 
     agent_names = sorted(boxplot_df['Agent'].unique())
     plt.xticks(range(1, len(agent_names) + 1), agent_names)
-    plt.ylim(bottom=45)  # Set the y-axis limit starting from 45 %
+    plt.ylim(bottom=0)  # Set the y-axis limit starting from 0 %
 
-    # Adding horizontal lines and labels
+    # Existing horizontal lines
     random_policy_line = plt.axhline(y=50, color='blue', linestyle='--', linewidth=2, label='Random Policy')
-    r_5_line = plt.axhline(y=67, color='green', linestyle='--', linewidth=2, label='r = 5%')
-    r_10_line = plt.axhline(y=63, color='orange', linestyle='--', linewidth=2, label='r = 10%')
+    r_5_line = plt.axhline(y=67, color='green', linestyle='--', linewidth=2, label='cluster r= 5%')
+
+    # Adding the new horizontal line for "Tabular QL"
+    tabular_ql_line = plt.axhline(y=20, color='purple', linestyle='--', linewidth=2, label='MARL QL')
 
     # Creating a legend and positioning it at the bottom right
-    from matplotlib.patches import Patch
-    trained_policy_patch = Patch(color='red', label='Trained Policy')
-    plt.legend(handles=[random_policy_line, r_5_line, r_10_line, trained_policy_patch], loc='lower right')
+    trained_policy_patch = Patch(color='red', label='DRL(ours)')
+    plt.legend(handles=[random_policy_line, r_5_line, tabular_ql_line, trained_policy_patch], loc='lower right')
 
     plt.savefig(current_dir+'/A_results/boxplot_' + TIMESTAMP+'.pdf', bbox_inches='tight')
-
-
 
 
 
