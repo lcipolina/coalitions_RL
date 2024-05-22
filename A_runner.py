@@ -1,8 +1,7 @@
 #!/p/scratch/laionize/cache-kun1/miniconda3/envs/ray_2.6/bin/python
 
 import ast
-from B_env_shap import ShapleyEnv as Env
-from C_train_shap import RunRay as train_policy
+from C_train import RunRay as train_policy
 from D_deploy import Inference as evaluate_policy
 from E_metrics import main as metrics
 from E_graphing import graph_reward_n_others
