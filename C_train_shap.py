@@ -13,12 +13,12 @@ from ray import air, tune
 from ray.rllib.utils.framework import try_import_torch
 torch, nn = try_import_torch()
 from ray.rllib.algorithms.ppo import PPOConfig
-from ray.rllib.policy.policy import PolicySpec                        #For policy mapping
-from typing import Dict                                               #for callbacks
+from ray.rllib.policy.policy import PolicySpec                        # for policy mapping
+from typing import Dict                                               # for callbacks
 from ray.rllib.algorithms.callbacks import DefaultCallbacks           # for callbacks
 from ray.rllib.env import BaseEnv                                     # for callbacks
 from ray.rllib.evaluation import RolloutWorker, Episode               # for callbacks
-from ray.rllib.policy import Policy                                   #for callbacks
+from ray.rllib.policy import Policy                                   # for callbacks
 from ray.air.integrations.wandb import WandbLoggerCallback
 from ray.tune.logger import UnifiedLogger
 
@@ -86,8 +86,6 @@ class Custom_callback(DefaultCallbacks):
                     result["custom_metrics"][key] = average_reward
 
         #print("Updated custom metrics with averages:", result["custom_metrics"])
-
-
 
     def on_episode_end(self, worker: RolloutWorker, base_env: BaseEnv,
                    policies: Dict[str, Policy], episode: Episode,
@@ -194,7 +192,7 @@ class RunRay:
                                                                                        num_to_keep= 5 #keep only the last 5
                                                                                        ),
                                                 #callbacks = [wandb_callbacks],  # WandB local_mode = False only!
-                                                verbose= 3, #0 for less output while training - 3 for seeing custom_metrics better
+                                                verbose= 1, #0 for less output while training - 3 for seeing custom_metrics better
                                                 local_dir = output_dir
                                             )
                                     )

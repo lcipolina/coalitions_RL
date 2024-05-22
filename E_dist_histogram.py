@@ -1,40 +1,97 @@
+from collections import Counter
 import matplotlib.pyplot as plt
+import os
+import ast
 
-# Your list of distances before and after
-distances_before = [[0.45, 0.3, 0.05], [0.5, 0.35, 0.05], [0.5, 0.4, 0.05], [0.5, 0.45, 0.05], [0.45, 0.5, 0.05], [0.4, 0.45, 0.1], [0.5, 0.4, 0.05], [0.45, 0.45, 0.05], [0.5, 0.5, 0.1], [0.5, 0.5, 0.15], [0.45, 0.5, 0.2]]
-distances_after = [[0.46, 0.31, 0.06], [0.5, 0.36, 0.06], [0.5, 0.41, 0.06], [0.5, 0.46, 0.06], [0.46, 0.51, 0.06], [0.41, 0.46, 0.11], [0.5, 0.41, 0.06], [0.46, 0.45, 0.06], [0.5, 0.45, 0.11], [0.5, 0.45, 0.16], [0.46, 0.5, 0.21]]
+current_dir = os.path.dirname(os.path.realpath(__file__))
+training_file_path = current_dir+'/dist_training.txt'
+testing_file_path   = current_dir+'/dist_testing.txt'
 
-# Initialize empty lists for each agent
-agent1_before, agent2_before, agent3_before = [], [], []
-agent1_after, agent2_after, agent3_after = [], [], []
+training_file_path = '/p/home/jusers/cipolina-kun1/juwels/coalitions/dist_training_jan31.txt'
+testing_file_path  = '/p/home/jusers/cipolina-kun1/juwels/coalitions/dist_testing_jan31_paper.txt'
 
-# Populate the lists
-for d_before, d_after in zip(distances_before, distances_after):
-    agent1_before.append(d_before[0])
-    agent2_before.append(d_before[1])
-    agent3_before.append(d_before[2])
 
-    agent1_after.append(d_after[0])
-    agent2_after.append(d_after[1])
-    agent3_after.append(d_after[2])
+#========================================================
+# Distance "histo graphs" with points
+#========================================================
 
-# Create histograms
-plt.figure(figsize=(15, 5))
 
-def plot_histogram(subplot_idx, before_data, after_data, agent_name):
-    plt.subplot(1, 3, subplot_idx)
-    plt.hist(before_data, bins=10, color='#add8e6', alpha=0.99, label='Training distances')  # Faded Blue
-    plt.hist(after_data, bins=10, color='#ffcccb', alpha=0.9, label='Testing distances')  # Faded Red
-    plt.xlabel('Distance to Origin')
-    plt.ylabel('Frequency')
-    plt.title(agent_name)
-    plt.legend()
 
-plot_histogram(1, agent1_before, agent1_after, 'Agent 1')
-plot_histogram(2, agent2_before, agent2_after, 'Agent 2')
-plot_histogram(3, agent3_before, agent3_after, 'Agent 3')
+# Helper function
+def open_distance_file(filepath):
+    with open(filepath, 'r') as file:
+        content = file.read()
+    # Directly evaluate the string content as a Python expression
+    list_of_lists = ast.literal_eval(content)
+    return list_of_lists
 
-plt.tight_layout()
 
-plt.savefig('agent_distances_histogram.png', dpi=300, bbox_inches='tight') # Save the figure
-plt.show()
+def plot_agent_training_and_testing_correct_legend(training_file_path, testing_file_path, agent_index):
+    """
+    Plots the positions of the same agent with training and testing data, using appropriately labeled legends.
+
+    :param training_data: List of lists containing the training data points for each vector.
+    :param testing_data: List of lists containing the testing data points for each vector.
+    :param agent_index: Index of the agent for both training and testing data.
+    """
+
+    # Process training file
+    training_distance_lst_ = open_distance_file(training_file_path)
+    # Process testing file
+    test_distance_lst_ = open_distance_file(testing_file_path)
+    # Demonstrating the function with training and testing data for agent 0
+    training_data = [[x * 100 for x in sublist] for sublist in training_distance_lst_]
+    testing_data = [[x * 100 for x in sublist] for sublist in test_distance_lst_]
+
+    # PLOT
+    plt.figure(figsize=(10, 6))
+
+    # Different colors for training and testing
+    training_color = 'blue'
+    testing_color = 'green'
+
+    # Plotting training data for the specified agent
+    training_occurrences = Counter([vector[agent_index] for vector in training_data])
+    max_occurrences = max(training_occurrences.values())  # For y-axis scaling
+
+    for distance, count in training_occurrences.items():
+        for occurrence in range(count):
+            plt.scatter(distance, occurrence + 1, color=training_color)
+
+    # Plotting testing data for the same agent
+    testing_occurrences = Counter([vector[agent_index] for vector in testing_data])
+    max_testing_occurrences = max(testing_occurrences.values())
+
+    if max_testing_occurrences > max_occurrences:
+        max_occurrences = max_testing_occurrences  # Update maximum for y-axis scaling
+
+    for distance, count in testing_occurrences.items():
+        for occurrence in range(count):
+            plt.scatter(distance, occurrence + 1, color=testing_color)
+
+    # Creating custom legend
+    training_legend = plt.Line2D([0], [0], marker='o', color='w', label=f'Agent {agent_index} - training',
+                                 markersize=10, markerfacecolor=training_color)
+    testing_legend = plt.Line2D([0], [0], marker='o', color='w', label=f'Agent {agent_index} - testing',
+                                markersize=10, markerfacecolor=testing_color)
+
+    plt.title(f'Agent {agent_index} Positions with Training and Testing Occurrences')
+    plt.xlabel('Agents Location')
+    plt.ylabel('Count of Occurrences')
+    plt.ylim(0, max_occurrences + 1)  # Adjust y-axis limits
+    plt.legend(handles=[training_legend, testing_legend])
+    plt.grid(True)
+    plt.savefig(current_dir+'/A_results/distances_counter_pol'+ str(agent_index)+'.png')  # Save the figure
+    # plt.show()  # Uncomment this line if you want to display the plot as well
+
+
+
+#################################################
+    #
+#####################
+
+# Usage:
+for agent in range(0,5):
+    plot_agent_training_and_testing_correct_legend(training_file_path, testing_file_path,
+                                                    agent_index=agent)
+print('done!')

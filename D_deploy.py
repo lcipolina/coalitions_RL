@@ -15,6 +15,8 @@ The cool thing is:
 '''
 
 import torch, socket, os
+import datetime
+import random
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go #for graph
@@ -23,20 +25,26 @@ from itertools import permutations
 import ray
 from ray.tune.registry import register_env
 from ray.rllib.algorithms.algorithm import Algorithm
+from ray.rllib.utils.checkpoints import get_checkpoint_info
+from ray.rllib.algorithms.ppo import PPOConfig
+from ray.rllib.policy.policy import PolicySpec                # for policy mapping
+
+current_dir = os.path.dirname(os.path.realpath(__file__))
+
 
 #Import environment definition
 #current_script_dir  = os.path.dirname(os.path.realpath(__file__)) # Get the current script directory path
 #parent_dir          = os.path.dirname(current_script_dir) # Get the parent directory (one level up)
 #sys.path.insert(0, parent_dir) # Add parent directory to sys.path
 
-# To save results in Juelich
-juelich_dir = '/p/scratch/ccstdl/cipolina-kun/A-COALITIONS/'
 # Define paths
+juelich_dir = '/p/scratch/ccstdl/cipolina-kun/A-COALITIONS/'
 home_dir = '/Users/lucia/ray_results'
-juelich_dir = '/p/scratch/ccstdl/cipolina-kun/A-COALITIONS'
 hostname = socket.gethostname() # Determine the correct path
 output_dir = juelich_dir if 'jwlogin21.juwels' in hostname.lower() else home_dir
 os.environ["RAY_AIR_LOCAL_CACHE_DIR"] = output_dir
+
+TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d-%H%M")
 
 from B_env_shap import ShapleyEnv as Env            # custom environment
 
@@ -61,13 +69,19 @@ class Inference:
         return ''.join([alphabet[i] for i, present in enumerate(coalition) if present == 1])
 
     # Function to convert agent_id to string
-    def agent_id_to_string(self,agent_id):
+    def agent_id_to_string_previous(self,agent_id):
         '''Used for the final coalitions'''
         alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         return alphabet[agent_id]
 
+    def agent_id_to_string(self, agent_id):
+        '''Used for the final coalitions'''
+        return str(agent_id)
 
-    def generate_observations(self,distance_lst):
+
+    def generate_observations(self,distance_lst, max_permutations=None):
+        '''Generate all possible coalitions and distances for each agent
+           Cap the nbr of permutations to make it manageable        '''
 
         # Select an agent and create all the possible observations for that agent
         # obs_dict = {agent_id: 'coalitions': np.array([c1, c2]), 'distances':np.array([d1, d2]) } # this is how the env expects the observation
@@ -83,7 +97,10 @@ class Inference:
         obs_dicts_per_agent = {}
         for agent_id, coalitions in valid_coalitions_dict.items():
             obs_dicts_lst = []
-            for c1, c2 in permutations(coalitions, 2):
+            all_perms = list(permutations(coalitions, 2))
+            if max_permutations is not None:
+                all_perms = all_perms[:max_permutations]
+            for c1, c2 in all_perms:
                 obs_dicts_lst.append({agent_id: {'coalitions':np.vstack([c1, c2]),
                                                  'distances':np.vstack(np.array([c1*distance_lst, c2*distance_lst]))
                                                     }
@@ -95,16 +112,60 @@ class Inference:
     def play_env_custom_obs(self, distance_lst_input=None):
         # Initialize Ray
         if ray.is_initialized(): ray.shutdown()
-        ray.init(local_mode=False, include_dashboard=False, ignore_reinit_error=True, log_to_driver=False)
+        ray.init(local_mode=True, include_dashboard=False, ignore_reinit_error=True, log_to_driver=True)
+        #ray.init(address='auto',include_dashboard=False, ignore_reinit_error=True,log_to_driver=True, _temp_dir = '/p/home/jusers/cipolina-kun1/juwels/ray_tmp')
 
-        # Rebuild the policy
-        algo = Algorithm.from_checkpoint(self.checkpoint_path)
+        # Rebuild the policy - old method - requires same number of workers
+        # algo = Algorithm.from_checkpoint(self.checkpoint_path)
 
-        # Initialize variables
+        # Rebuild the policy to work with fewer number of workers
+        def policy_dict():
+            return {f"policy{i}": PolicySpec(observation_space=self.env.observation_space,
+                                     action_space=self.env.action_space) for i in self.env._agent_ids}
+        def policy_mapping_fn(agent_id, episode, worker, **kwargs):
+            '''Maps each Agent's ID with a different policy. So each agent is trained with a diff policy.'''
+            get_policy_key = lambda agent_id: f"policy{agent_id}"
+            return get_policy_key(agent_id)
+
+        checkpoint_info = get_checkpoint_info(self.checkpoint_path)
+
+        # Convert checkpoint info to algorithm state
+        state = Algorithm._checkpoint_info_to_algorithm_state(
+            checkpoint_info=checkpoint_info,
+            policy_ids=None,  # Adjust if using specific policy IDs; might be auto-inferred in your case
+            policy_mapping_fn=None,  # Set to None as we'll configure policies directly in the config
+            policies_to_train=None,  # Specify if training specific policies
+        )
+
+        # Need to bring the config dict exactly as it was when training (otherwise won't work)
+        #Modify the configuration for your multi-agent setup and 7 CPU cores
+        modified_config    = (PPOConfig()
+                .environment(env =Env, env_config= self.custom_env_config, disable_env_checking=True, ) #Register the Env!  (could't make the render work)
+                .training(train_batch_size  = 1000,
+                          model={"fcnet_hiddens": [400, 400]},
+                          entropy_coeff     = 0.03,    #works well
+                          num_sgd_iter      = 10,      #to make it faster
+                          kl_coeff          = 0.5,      #kl loss, for policy stability
+                          gamma             = 0.5,   #best results with DF = 1. If I decrease it, agents go bananas
+                          _enable_learner_api=False #to keep using the old RLLIB API
+                        )\
+                .rollouts(num_rollout_workers=7, num_envs_per_worker=1, rollout_fragment_length='auto')
+                .framework("torch")
+                .rl_module(_enable_rl_module_api=False) #to keep using the old ModelCatalog API
+                .multi_agent(  #EXTRA FOR THE POLICY MAPPING
+                        policies = policy_dict(), #dict of policies
+                        policy_mapping_fn = policy_mapping_fn #which pol in 'dict of pols' maps to which agent
+                )\
+                .debugging(seed=42 )   #setting seed for reproducibility
+                .reporting(keep_per_episode_custom_metrics=True)
+            )
+
+        state["config"] = modified_config.to_dict()     # Inject the modified configuration into the state
+        algo = Algorithm.from_state(state)  # Load the algorithm from the modified state
+
+        # PLAY THE ENVIRONMENT
         responses_by_distance = {}  # New dictionary to store responses by distance list
         final_coalitions_by_distance = {}  # New dictionary to store final coalitions by distance list
-
-        max_steps = self.custom_env_config['max_steps']
 
         # Set default distances if none are provided
         if distance_lst_input is None:
@@ -117,18 +178,20 @@ class Inference:
             # _, _ = self.env.reset()
 
             # Generate all permutations of coalitions and add distances to the dict
-            obs_dicts_per_agent = self.generate_observations(distance_lst) # creates{[coalitions], [distances]}
             response_lst        = []    # Initialize list to store responses for this distance list
             final_coalitions    = set() # Initialize set to store final coalitions for this distance list
 
+            # Sample from the distances as otherwise they're just too many
+            sample_size = 4 #self.env.num_agents #int(np.sqrt(2**self.env.num_agents)) #if number of agents too big
+            obs_dict_lst = self.generate_observations(distance_lst,  sample_size) # creates{[coalitions], [distances]}
 
             # Run the environment on the trained model
-            for agent_id, obs_dict_lst in obs_dicts_per_agent.items():
+            for agent_id, obs_dict_lst in obs_dict_lst.items():
                 for obs_dict in obs_dict_lst:
 
                     agent_id = list(obs_dict.keys())[0]
                     policy_agent = "policy" + str(agent_id)
-                    current_coal, proposed_coal = obs_dict[agent_id]['coalitions'] #used fo rthe reward
+                    current_coal, proposed_coal = obs_dict[agent_id]['coalitions'] #used for the reward
 
                    # print('obs_dict', obs_dict)
 
@@ -166,7 +229,8 @@ class Inference:
         '''Save the DataFrame to an Excel file
         responses_by_distance is a dictionary where keys are distance lists and values are lists of dictionaries
         '''
-        with pd.ExcelWriter('response_data.xlsx') as writer:
+        #with pd.ExcelWriter('response_data.xlsx') as writer:
+        with pd.ExcelWriter(current_dir+'/A_results/response_data.xlsx') as writer:
             for distance, response in responses_by_distance.items():
                 df = pd.DataFrame(response)
                 df['current'] = df['current'].apply(list)  # Convert NumPy arrays to lists (if they are NumPy arrays)
@@ -196,7 +260,7 @@ class Inference:
             color_mapping = {}
 
             # Annotate each point and draw connecting lines for coalitions
-            distance_lst = [round(x, 2) for x in eval(distance_str)]
+            distance_lst = [round(x*100, 2) for x in eval(distance_str)]
             for i, distance in enumerate(distance_lst):
                 agent_id = i
                 coalition_array = tuple(last_coalitions.get(agent_id, []))
@@ -215,14 +279,11 @@ class Inference:
                         plt.plot([distance, distance_lst[j]], [idx, idx], color=color)
 
         plt.xlabel('Distance from Origin', fontsize=14)
-        plt.ylabel('Coalition Index', fontsize=14)
-        plt.title('Final Coalitions for Each Distance List', fontsize=16)
+        plt.ylabel('Game Index', fontsize=14)
+        plt.title('Final Coalitions for Each Distance Game', fontsize=16)
         plt.yticks(range(len(responses_by_distance)))  # Show y-axis ticks for each run
-        plt.xlim(0, 1)  # Set x-axis limits
-
-
-
-        plt.savefig('final_coalitions_graph.pdf')
+        plt.xlim(0, 0.5*100)  # Set x-axis limits
+        plt.savefig(current_dir+'/A_results/final_coals_graph_' +TIMESTAMP+'.pdf')
        # plt.show()
 
     def sankey_diagram(self, responses_by_distance, final_coalitions_by_distance):
@@ -276,126 +337,6 @@ class Inference:
         sanitized_distance_str = str(distance_lst).replace("[", "").replace("]", "").replace(",", "_").replace(" ", "")
         fig.write_image(f"sankey_diagram_{sanitized_distance_str}.pdf")
 
-
-
-#################################################
-####################### OLD FUNCTIONS ###########
-    def play_env_not_good(self):
-        ''' Plays the environment to evaluate a trained model
-        NOTE: THIS CODE DOES NOT SWIPE OVER ALL POSSIBLE COALITIONS!
-        '''
-
-        if ray.is_initialized(): ray.shutdown()
-        ray.init(local_mode=False,include_dashboard=False, ignore_reinit_error=True,log_to_driver=False) #local_mode=True it might run faster, used to debug. Set to false for WandB
-
-        # Rebuild the policy
-        algo = Algorithm.from_checkpoint(self.checkpoint_path) #for newer Ray versions - don't need to pass the algo config
-
-        # Run the environment on the trained model
-        response_lst          = []
-        for _ in range(3): #picks different combinations of coalitions
-            truncated, terminated = {}, {}
-            truncated['__all__']  = terminated['__all__'] = False
-            max_steps             = self.custom_env_config['max_steps']
-
-
-            #Build my own observation
-            # Generate rnd distances
-            #self.distance_lst = [0.10, 0.15, 0.99] #  np.random.rand(1, len(self.env.distance_lst)).flatten().astype(np.float16)
-            #self.distance_lst = [0.10, 0.89, 0.99]
-            self.distance_lst = self.env.distance_lst
-            print('env distance_lst:',self.distance_lst)  # To confirm that agents with lower distance cluster together
-
-            obs_dict, _ = self.env.reset(manual_distances = self.distance_lst)
-
-            # Runs until there is no more valid coalitions to offer
-            while not truncated['__all__'] and not terminated['__all__']:
-                agent_id          = list(obs_dict.keys())[0]
-
-                #Build my own observation
-                obs_dict[agent_id]['distances'] =  obs_dict[agent_id]['coalitions']*self.distance_lst
-
-                current_coal, proposed_coal = obs_dict[agent_id]['coalitions']
-                current_distance, proposed_distance = obs_dict[agent_id]['distances']
-                policy_agent      = "policy"+str(agent_id) #need to call the policy of the agent receiving the observation
-
-                # WORKS BETTER WITH EXPLORE = False (but sometimes with explore = true. Try both!)
-                action, states, extras_dict = algo.get_policy(policy_id=policy_agent).compute_single_action(obs_dict, explore = False) #explore = true samples from the action distribution while False takes the mode (a fixed value)
-                obs_dict, rew_dict, terminated, truncated, info = self.env.step({agent_id: action}) #adjusts coalitions to the action taken and produces next_obs_dict = {next_agent_id: np.array([c1, c2])}
-
-                # Record responses - Like this it prints better
-                response_entry = {'agent_id': agent_id, 'current': current_coal, 'proposed': proposed_coal, 'action': action, 'rew': rew_dict[agent_id]}
-                print(response_entry)
-                response_lst.append(response_entry)
-
-                # Print accepted coalitions
-                if action == 1 and sum(proposed_coal) !=0: #and sum(proposed_coal) !=1: #and sum(current_coal) !=0 and sum(proposed_coal) !=0: #avoid empty coalitions (useful only for Shapley)
-                   current_distance = [round(x, 2) for x in current_distance]
-                   proposed_distance = [round(x, 2) for x in proposed_distance]
-
-
-                #print(f"Agent {agent_id} accepted coal {proposed_coal} over coal {current_coal}. current dist {current_distance} proposed dist {proposed_distance}.Reward:{np.round(rew_dict[agent_id],3)}.")
-
-                #response_entry = {'agent_id': agent_id, 'current': current_coal, 'proposed': proposed_coal, 'action': action}
-                #response_lst.append(response_entry)
-                #print(response_entry)
-
-        ray.shutdown()
-        return response_lst
-
-
-    def previous_previous_code(self):
-
-        # REBUILD POLICY
-        algo = Algorithm.from_checkpoint(self.checkpoint_path) #for newer Ray versions - don't need to pass the algo config
-
-        # CREAETE BATCH OF OBSERVATIONS in the format needed by the Policy
-        agent_id = 0
-        obs_dicts =[{agent_id:np.array([[1, 0, 0],[1, 1, 1]])},
-                        {agent_id:np.array([[1, 1, 0],[1, 1, 1]])},
-                        {agent_id:np.array([[1, 0, 1],[1, 1, 1]])},
-                        {agent_id:np.array([[1, 1, 1],[1, 1, 1]])},
-                        {agent_id:np.array([[1, 1, 1],[1, 0, 0]])}
-                        ]
-        agent_id = 1
-        obs_dicts =[{agent_id:np.array([[0, 1, 0],[1, 1, 1]])},
-                    {agent_id:np.array([[0, 1, 1],[1, 1, 1]])},
-                    {agent_id:np.array([[1, 1, 0],[1, 1, 1]])},
-                    {agent_id:np.array([[1, 1, 1],[1, 1, 1]])},
-                    {agent_id:np.array([[1, 1, 1],[0, 1, 0]])}
-                    ]
-        agent_id = 2
-        obs_dicts =[{agent_id:np.array([[0, 0, 1],[1, 1, 1]])},
-                    {agent_id:np.array([[0, 1, 1],[1, 1, 1]])},
-                    {agent_id:np.array([[1, 1, 1],[0, 0, 1]])},
-                    {agent_id:np.array([[1, 0, 1],[1, 1, 1]])}, #esto lo esta aprendiendo raro
-                    {agent_id:np.array([[1, 1, 1],[1, 0, 1]])} #esto da error en el otro codigo
-
-                    ]
-
-        # RUN THE ENVIRONMENT on the trained model
-        for obs_dict in obs_dicts:                   # loop through obs in the batch
-                terminated, truncated = False, False # while not terminated and not truncated:
-
-                reward_dict = {agent: 0 for agent in self.env.agent_lst} #NOTE: reward is not relevant when evaluating chosen coalitions
-
-                policy_agent =  "policy"+str(agent_id)
-                action, states, extras_dict = algo.get_policy(policy_id=policy_agent).compute_single_action(obs_dict, explore = True) #explore = true samples from the action distribution while False takes the mode (a fixed value)
-                action_dict = {agent_id: action}
-
-                agent = list(obs_dict.keys())[0]
-                coalitions = obs_dict[agent]
-                print("AGENT: ", agent)
-                print("COALITIONS observed: ", coalitions)
-                print("ACTION: ",action)
-                a = 0
-
-                #env.render() #prints: states
-                #rew_sum += reward
-                #print("AVG_REW: ", rew_sum/(t+1))
-
-        # average_rewards = {agent: total_reward / num_episodes for agent, total_reward in reward_accumulators.items()}
-        # print('avg rewards per agent:', average_rewards)
 
 ###############################################
 # MAIN

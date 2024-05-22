@@ -84,7 +84,7 @@ if __name__ == '__main__':
     #EPSILON = LINE_LENGTH * 0.05  # Example epsilon value  #63,5%
     #EPSILON = LINE_LENGTH * 0.1  # Example epsilon value  #68%
     EPSILON = None  # we will do a grid search over epsilon values
-    num_simulated_epsilons = 100 # number of epsilons in the grid search
+    num_simulated_epsilons = 100 # number of epsilons (radius) in the grid search
     NUM_SIMULATIONS = 100  # Number of simulations to run over one epsilon
     k               = 20  # Scaling constant for characteristic function
     alpha           = 1  # Scaling constant for characteristic function
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     else:
         num_runs = NUM_SIMULATIONS
 
-    # Do a grid search over EPSILON values
+    # Do a grid search over EPSILON (radius) values
     num_runs = NUM_SIMULATIONS if EPSILON else len(np.linspace(0.05, 0.9, num_simulated_epsilons))
 
     # Initialize result list and epsilon

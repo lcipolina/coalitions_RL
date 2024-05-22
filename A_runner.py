@@ -12,8 +12,6 @@ from G_distance_lst import DistanceGenerator
 
 
 
-
-
 class ShapleyRunner:
     def __init__(self, setup_dict, char_func_dict, distance_gen_config):
         # Generate list of list of rnd distances and their testing counterparts - they should be generated at the same time to be chained.
@@ -73,7 +71,7 @@ class ShapleyRunner:
         return train_result['checkpoint_path'] # used for testing
 
     # EVALUATE WITH ONE CHECKPOINT ====================================
-    def evaluate(self, checkpoint_path=None,train_path= None, test_path = None):
+    def evaluate(self, checkpoint_path=None, train_path= None, test_path = None):
         '''Reads from checkpoint and plays policyin env. Graphs Boxplot and Accuracy
            To load a checkpoint. Num CPU requested should be the at min, same as training. Otherwise look at open issue in Github.
            :inputs: training dists are needed to initialize the env
@@ -83,10 +81,10 @@ class ShapleyRunner:
         else:
             test_distance_lst = self.open_distance_file(filepath = test_path)  # Open and process list of list file
 
-        if checkpoint_path is None:
-            checkpoint_path = self.checkpoint_path
-        else:
-            checkpoint_path=checkpoint_path
+        #if checkpoint_path is None:
+        #    checkpoint_path = self.checkpoint_path
+        #else:
+        checkpoint_path=checkpoint_path
 
         # Training and testing distances and vbles for the env
         # sets the self.custom_env_config
@@ -119,8 +117,8 @@ def run_shapley_runner(train_n_eval = True, train_path = None,test_path  = None,
 
     #======== Because of the SLURM runner, this needs to be here (otherwise not taken)
     # If we want to use a pre-set list of distances - for reproducibility
-    train_path  = '/p/home/jusers/cipolina-kun1/juwels/coalitions/dist_training_jan31.txt'
-    test_path  = '/p/home/jusers/cipolina-kun1/juwels/coalitions/dist_testing_jan31.txt'
+    #train_path  = '/p/home/jusers/cipolina-kun1/juwels/coalitions/dist_training_jan31.txt'
+    #test_path  = '/p/home/jusers/cipolina-kun1/juwels/coalitions/dist_testing_jan31.txt'
 
     # TRAIN n Inference
     train_n_eval = True
@@ -132,11 +130,11 @@ def run_shapley_runner(train_n_eval = True, train_path = None,test_path  = None,
     # =====================
 
     setup_dict = {
-        'training_iterations': 10*29,# (10*25),  this makes a lot of difference!!    # we need ~20 per each distance to learn 100%. Iterations = num_distances * 20
-        'train_batch_size'   : 2900, #2800,# 2900,   # we need approx 2200 steps to learn 100%
+        'training_iterations': 3, #10*29,# (10*25),  this makes a lot of difference!!    # we need ~20 per each distance to learn 100%. Iterations = num_distances * 20
+        'train_batch_size'   : 500, #2900, #2800,# 2900,   # we need approx 2200 steps to learn 100%
         'seeds_lst'          :[42], # [42,100, 200, 300, 400],#[42,100, 200, 300, 400],
-        'experiment_name'    :'new_distances',
-        'cpu_nodes'          : 36 #change it on SLURM script as well  - more than this brakes the custom callbacks (other things work)
+        'experiment_name'    :'to_delete',
+        'cpu_nodes'          : 8 #change it on SLURM script as well  - more than this brakes the custom callbacks (other things work)
     }
 
     char_func_dict = {
@@ -179,20 +177,23 @@ if __name__ == '__main__':
 
     #======== Because of the SLURM runner, this needs to be here (otherwise not taken)
     # If we want to use a pre-set list of distances - for reproducibility
-    train_path  = '/p/home/jusers/cipolina-kun1/juwels/coalitions/dist_training_jan31.txt'
-    test_path  = '/p/home/jusers/cipolina-kun1/juwels/coalitions/dist_testing_jan31.txt'
+    train_path  = '/Users/lucia/Desktop/LuciaArchive/000_A_MY_RESEARCH/00-My_Papers/Ridesharing/000-A-RidesharingMARL/00-Codes/coalitions/A-coalitions_paper/dist_testing.txt'
+    test_path  = '/Users/lucia/Desktop/LuciaArchive/000_A_MY_RESEARCH/00-My_Papers/Ridesharing/000-A-RidesharingMARL/00-Codes/coalitions/A-coalitions_paper/dist_testing.txt'
+
+    # ALSO CHANGE inside HERE: run_shapley_runner
 
     # TRAIN n Inference
     train_n_eval = True
+    checkpoint_path_trained = None
 
     # EVAL
-   # train_n_eval = False # inference only
-    #checkpoint_path_trained = \
-    #"/p/home/jusers/cipolina-kun1/juwels/ray_results/new_distances/PPO_ShapleyEnv_01c47_00000_0_2024-02-01_15-34-29/checkpoint_000290"
+    #train_n_eval = False # inference only
+   # checkpoint_path_trained = \
+   #"/Users/lucia/Desktop/ray_results/new_distances/PPO_ShapleyEnv_466ef_00000_0_2024-02-01_17-30-56/checkpoint_000290"
     # =====================
 
 
     run_shapley_runner(train_n_eval,
-                       train_path = train_path_,
-                       test_path  = test_path_,
-                       checkpoint_path_trained =checkpoint_path_ )
+                       train_path = train_path,
+                       test_path  = test_path,
+                       checkpoint_path_trained =checkpoint_path_trained )

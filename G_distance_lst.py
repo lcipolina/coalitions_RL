@@ -76,10 +76,14 @@ class DistanceGenerator:
         self.write_to_file(self.training_distances, filename='training_dist')   # Save to a txt file
         return self.training_distances
 
-    def generate_testing_distances_n_plot(self,num_obs = None ):
+    def generate_testing_distances_n_plot(self,train_distance_lst=None ):
+        '''Takes the training distances and adds an epsilon - so that tran is fairly close to test'''
         testing_distances = []
-        if num_obs is None: #loop over the entire training set
-           num_obs = len(self.training_distances)
+        if train_distance_lst is None: #if dist list was generated inside this class
+           num_obs = len(self.training_distances)  #loop over the entire training set
+        else:
+           num_obs = len(train_distance_lst) # if dist list was passed.
+           self.training_distances = train_distance_lst
         for distance_set in self.training_distances[:num_obs]: #loop over a slice
         #for distance_set in self.training_distances: #loop over all distances - inlcuding the revisit ones (will be included twice)
                 new_set = [round(loc + self.epsilon, 2) for loc in distance_set]

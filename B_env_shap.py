@@ -250,8 +250,10 @@ class ShapleyEnv(MultiAgentEnv):
         if self.step_count == np.round((self.batch_size/NUM_CPUS-1),0): # CPUS-1 = num_rollout_workers. Approx nbr of steps per one batch - update only when batch is full. RLLIB divides the steps by the num_workers
            self.update_distances()    # Either add randomness to distances - or select next distance from the curriculum list
 
+        a = np.array(self.current_coalitions[self.current_agent])*0
+        b = np.array(self.new_coalition)*0
         return {
-            'coalitions': np.vstack([self.current_coalitions[self.current_agent], self.new_coalition]),
+            'coalitions': np.vstack([a, b]),
             'distances': np.vstack([self.distance_lst*self.current_coalitions[self.current_agent] , self.distance_lst*self.new_coalition])
         }
 
