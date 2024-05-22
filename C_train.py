@@ -35,7 +35,7 @@ TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d-%H%M")
 class RunRay:
     ''' Train a custom env on Ray 2.6'''
 
-    def __init__(self, setup_dict,custom_env_config, experiment_name = 'shapley_rl'):
+    def __init__(self, setup_dict,custom_env_config, experiment_name = 'coalitions_rl'):
 
         current_dir      = os.path.dirname(os.path.realpath(__file__))
         self.excel_path  = os.path.join(current_dir, 'A_results', 'output.xlsx')
@@ -226,4 +226,4 @@ if __name__=='__main__':
           }
 
     # Call Ray to train model
-    train = RunRay(setup_dict,custom_env_config, experiment_name = 'shapley_rl').train()
+    train = RunRay(setup_dict,custom_env_config, experiment_name = 'coalitions_rl').train()

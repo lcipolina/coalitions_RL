@@ -31,7 +31,8 @@ class CoalitionRunner:
             'char_func_dict'  : self.char_func_dict,
             'manual_distances': self.train_distance_lst,
             'max_steps'       : 10000, #not used
-            'batch_size'      : self.setup_dict['train_batch_size']
+            'batch_size'      : self.setup_dict['train_batch_size'],
+            'cpu_nodes'       : self.setup_dict['cpu_nodes']
         }
 
     def set_distances(self, train_path= None, test_path=None):
@@ -134,7 +135,7 @@ def run_coalition_runner(train_n_eval = True, train_path = None,test_path  = Non
         'seeds_lst'          :[42], # [42,100, 200, 300, 400],#[42,100, 200, 300, 400],
         'experiment_name'    :'to_delete',
         'cpu_nodes'          : 8 #change it on SLURM and in 'B_env.py' NUM_CPUs script as well  - more than this brakes the custom callbacks (other things work)
-    }                           #TODO: script 'B_env.py" should take 'cpu_nodes' as input
+    }             
 
     char_func_dict = {
         'mode': 'ridesharing',
