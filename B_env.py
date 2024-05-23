@@ -12,6 +12,7 @@
     6. Environment selects the next agent in round-robin fashion
     etc
 
+
    Works on Ray 2.6
 '''
 
@@ -23,8 +24,7 @@ from gym.utils import seeding
 import numpy as np
 from itertools import product
 from ray.rllib.env.multi_agent_env import MultiAgentEnv
-from ray.rllib.utils.typing import MultiAgentDict #To avoid empty policy
-from itertools import permutations
+from ray.rllib.utils.typing import MultiAgentDict #To avoid empty policy space
 import logging
 
 #logging.basicConfig(filename='ray_info.log', level=logging.INFO, format='%(message)s')
@@ -67,6 +67,12 @@ class CharacteristicFunction:
                 return distance
             else:
                 return (self.k * np.var(distances)/(self.alpha * np.sum(coalition))) #sign consistent
+        elif self.mode == 'subadditive': #subadditive cost game - more people, less cost -  the value of the coalition is the sum of the values of the agents
+            distances = [x for x in distances if x != 0]
+            if len(distances) == 1:
+                return distance
+            else:
+                return (1/(self.alpha * np.sum(coalition))) #sign consistent
 
 
 
@@ -138,6 +144,7 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
                         agent_coalitions.append(np.array(coalition))
             self.valid_coalitions[agent] = agent_coalitions
         return self.valid_coalitions           # Used for testing
+
 
     def generate_initial_distances(self):
         '''Generate an INITIAL random distance vector for each agent
@@ -273,6 +280,7 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
            self.current_coalitions[self.current_agent] = self.new_coalition  # Update the current coalition for this agent
            #print('Current coalition - acting agent:', self.current_coalitions[self.current_agent])
 
+
     def _select_playing_agent(self):
         '''Selects the next agent to play
            agents selected in round-robin fashion is more efficient than random selection
@@ -406,6 +414,7 @@ def test_env(custom_env_config):
 
     average_rewards = {agent: total_reward / num_episodes for agent, total_reward in reward_accumulators.items()}
     print('avg rewards per agent:', average_rewards)
+
 
 
 ##################################
