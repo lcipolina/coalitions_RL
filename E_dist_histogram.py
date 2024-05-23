@@ -1,3 +1,9 @@
+'''Script that generates histograms of the distances of the agents from the origin,
+ with points representing the occurrences of each distance for both training and testing data.
+'''
+
+
+
 from collections import Counter
 import matplotlib.pyplot as plt
 import os
