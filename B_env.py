@@ -80,19 +80,19 @@ class CharacteristicFunction:
 class DynamicCoalitionsEnv(MultiAgentEnv):
     def __init__(self, config_dict):
         super().__init__()
-        self.step_count            = 0
-        self.num_agents            = config_dict.get('num_agents',2)
-        self.batch_size            = config_dict.get('batch_size', 2000)       # for the CV learning - update the CV when a batch is full
-        char_config_dict           = config_dict.get('char_func_dict',{})      # characteristic function config dict
-        self.manual_distance_lst   = config_dict.get('manual_distances',None)  # for the curriculum learning
-        self.cpu_nodes             = config_dict.get('cpu_nodes',os.cpu_count()) # number of CPUs to divide the batch size
-        self.cyclic_iter           = itertools.cycle(self.manual_distance_lst)
-        self.char_func             = CharacteristicFunction(char_config_dict)
-        self.agent_lst             = list(range(self.num_agents))              # [0, 1, 2, ..., num_agents-1]
-        self._agent_ids            = set(self.agent_lst)                       # Required by RLLIB (key word- don't change)
-        self.reward_dict           = {}
-        self.current_coalitions    = {i: np.array([1 if i == j else 0 for j in range(self.num_agents)]) for i in range(self.num_agents)} #start on singletons - will be overriden later
-        self.max_steps             = config_dict.get('max_steps',4000)
+        self.step_count           = 0
+        self.num_agents           = config_dict.get('num_agents',2)
+        self.batch_size           = config_dict.get('batch_size', 2000)       # for the CV learning - update the CV when a batch is full
+        char_config_dict          = config_dict.get('char_func_dict',{})      # characteristic function config dict
+        self.manual_distance_lst  = config_dict.get('manual_distances',None)  # for the curriculum learning
+        self.cpu_nodes            = config_dict.get('cpu_nodes',os.cpu_count()) # number of CPUs to divide the batch size
+        self.cyclic_iter          = itertools.cycle(self.manual_distance_lst) if self.manual_distance_lst is not None else None  # iterates over the list and then starts over
+        self.char_func            = CharacteristicFunction(char_config_dict)
+        self.agent_lst            = list(range(self.num_agents))              # [0, 1, 2, ..., num_agents-1]
+        self._agent_ids           = set(self.agent_lst)                       # Required by RLLIB (key word- don't change)
+        self.reward_dict          = {}
+        self.current_coalitions   = {i: np.array([1 if i == j else 0 for j in range(self.num_agents)]) for i in range(self.num_agents)} #start on singletons - will be overriden later
+        self.max_steps            = config_dict.get('max_steps',4000)
 
         self.accumulated_rewards = {agent: 0 for agent in self.agent_lst}     # To match RLLIB's per-agent output
 
