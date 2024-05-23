@@ -107,8 +107,8 @@ class Inference:
     def play_env_custom_obs(self, distance_lst_input=None):
         # Initialize Ray
         if ray.is_initialized(): ray.shutdown()
-        #ray.init(local_mode=False, include_dashboard=False, ignore_reinit_error=True, log_to_driver=False)
-        ray.init(address='auto',include_dashboard=False, ignore_reinit_error=True,log_to_driver=True, _temp_dir = '/p/home/jusers/cipolina-kun1/juwels/ray_tmp')
+        ray.init(local_mode=True, include_dashboard=False, ignore_reinit_error=True, log_to_driver=False)
+        #ray.init(address='auto',include_dashboard=False, ignore_reinit_error=True,log_to_driver=True, _temp_dir = '/p/home/jusers/cipolina-kun1/juwels/ray_tmp')
 
         # Rebuild the policy
         algo = Algorithm.from_checkpoint(self.checkpoint_path)
