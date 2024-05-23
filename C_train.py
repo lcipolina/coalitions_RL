@@ -36,9 +36,8 @@ class RunRay:
     ''' Train a custom env on Ray 2.6'''
 
     def __init__(self, setup_dict,custom_env_config, experiment_name = 'coalitions_rl'):
-
         current_dir      = os.path.dirname(os.path.realpath(__file__))
-        self.excel_path = os.path.join(current_dir, 'A_results', f"output_{TIMESTAMP}.xlsx")
+        self.excel_path  = os.path.join(current_dir, 'A_results', f"output_{TIMESTAMP}.xlsx")
         self.jason_path  = os.path.join(current_dir, 'best_checkpoint_'+TIMESTAMP+'.json')
         self.clear_excel(self.excel_path)
         self.clear_json(self.jason_path)
@@ -46,10 +45,9 @@ class RunRay:
         self.custom_env_config = custom_env_config
         self.experiment_name   = experiment_name
 
-
     def setup_n_fit(self):
-        '''Setup trainer dict and train model '''
-
+        '''Setup trainer dict and train model
+        '''
         signal.signal(signal.SIGTERM, signal_handler) # Julich SIGTERM handling for graceful shutdown and restore unterminated runs
         experiment_path = os.path.join(output_dir, self.experiment_name)
 
