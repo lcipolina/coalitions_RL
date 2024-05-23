@@ -16,7 +16,6 @@ class CoalitionRunner:
         # Generate list of list of rnd distances and their testing counterparts - they should be generated at the same time to be chained.
         # revisit_steps should be less or equal num_steps
 
-       # Initialize other config
         self.distance_gen_dict = distance_gen_config
         self.setup_dict        = setup_dict
         self.char_func_dict    = char_func_dict

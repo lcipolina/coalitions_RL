@@ -14,11 +14,12 @@ from openpyxl import load_workbook
 from Z_utils import get_latest_file
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
-
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d-%H%M")
 
 def graph_reward_n_others(rew_good_action = 10,rew_bad_action = -100 ):
     '''Plot mean and variance across several seeds'''
+
+    excel_path = get_latest_file(directory = os.path.join(current_dir, 'A_results'), prefix = 'output', extension = '.xlsx') # Get the latest file in the directory by time stamp
 
     # Delete useless "Sheet1"
     book = load_workbook(excel_path)
