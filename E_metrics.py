@@ -5,6 +5,8 @@ import os
 import statistics
 from matplotlib.patches import Patch
 
+from Z_utils import get_latest_file
+
 '''Generates BoxPlot and agents response metrics.
 Script generates 'response_data.xls' file in A_results folder
 From that data it generates a boxplot and summary_table.xls in the same folder
@@ -12,7 +14,7 @@ The boxplot is generated directly from the 'response_data.xls'
 The summary_table is just for information purpopses
 '''
 
-current_dir = os.path.dirname(os.path.realpath(__file__))
+CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d-%H%M")
 
 def read_excel_data(file_path):
@@ -53,7 +55,7 @@ def generate_summary_table(accuracy_across_tabs):
         summary_list.append([agent, mean_accuracy, std_dev_accuracy])
 
     summary_table = pd.DataFrame(summary_list, columns=['Agent', 'Test Accuracy', 'Std Dev'])
-    summary_table.to_excel(current_dir+'/A_results/summary_table.xlsx', index=False)
+    summary_table.to_excel(CURRENT_DIR+'/A_results/summary_table.xlsx', index=False)
     return summary_table
 
 
@@ -85,7 +87,7 @@ def generate_boxplot(boxplot_data):
     trained_policy_patch = Patch(color='red', label='DRL(ours)')
     plt.legend(handles=[random_policy_line, r_5_line, tabular_ql_line, trained_policy_patch], loc='lower right')
 
-    plt.savefig(current_dir+'/A_results/boxplot_' + TIMESTAMP+'.pdf', bbox_inches='tight')
+    plt.savefig(CURRENT_DIR+'/A_results/boxplot_' + TIMESTAMP+'.png', bbox_inches='tight')
 
 
 
@@ -94,7 +96,7 @@ def generate_boxplot(boxplot_data):
 # ====================
 def main():
     '''This is the starting point of the script called by the Runner script'''
-    file_path =  os.path.join(current_dir, 'A_results', 'response_data.xlsx')
+    file_path = get_latest_file(directory = os.path.join(CURRENT_DIR, 'A_results'), prefix = 'response_data', extension = '.xlsx') # Get the latest file in the directory by time stamp
     data      = read_excel_data(file_path)
     summary_data, boxplot_data, accuracy_across_tabs = calculate_metrics(data)
     summary_table = generate_summary_table(accuracy_across_tabs)

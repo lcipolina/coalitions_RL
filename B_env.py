@@ -67,6 +67,12 @@ class CharacteristicFunction:
                 return distance
             else:
                 return (self.k * np.var(distances)/(self.alpha * np.sum(coalition))) #sign consistent
+        elif self.mode == 'subadditive': #subadditive cost game - more people, less cost -  the value of the coalition is the sum of the values of the agents
+            distances = [x for x in distances if x != 0]
+            if len(distances) == 1:
+                return distance
+            else:
+                return (1/(self.alpha * np.sum(coalition))) #sign consistent
 
 
 

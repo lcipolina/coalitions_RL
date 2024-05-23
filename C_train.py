@@ -38,7 +38,7 @@ class RunRay:
     def __init__(self, setup_dict,custom_env_config, experiment_name = 'coalitions_rl'):
 
         current_dir      = os.path.dirname(os.path.realpath(__file__))
-        self.excel_path  = os.path.join(current_dir, 'A_results', 'output.xlsx')
+        self.excel_path = os.path.join(current_dir, 'A_results', f"output_{TIMESTAMP}.xlsx")
         self.jason_path  = os.path.join(current_dir, 'best_checkpoint_'+TIMESTAMP+'.json')
         self.clear_excel(self.excel_path)
         self.clear_json(self.jason_path)

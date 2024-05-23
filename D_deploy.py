@@ -37,14 +37,15 @@ current_dir = os.path.dirname(os.path.realpath(__file__))
 juelich_dir = '/p/scratch/ccstdl/cipolina-kun/A-COALITIONS/'
 # Define paths
 home_dir = '/Users/lucia/ray_results'
-juelich_dir = '/p/scratch/ccstdl/cipolina-kun/A-COALITIONS'
 hostname = socket.gethostname() # Determine the correct path
 output_dir = juelich_dir if 'jwlogin21.juwels' in hostname.lower() else home_dir
 os.environ["RAY_AIR_LOCAL_CACHE_DIR"] = output_dir
 
 TIMESTAMP = datetime.datetime.now().strftime("%Y%m%d-%H%M")
+response_file = current_dir+'/A_results/response_data_'+TIMESTAMP+'.xlsx'  #responses and final coalitions
 
-from B_env_shap import ShapleyEnv as Env            # custom environment
+
+from B_env import DynamicCoalitionsEnv as Env            # custom environment
 
 
 # ####################################################
@@ -107,7 +108,7 @@ class Inference:
         # Initialize Ray
         if ray.is_initialized(): ray.shutdown()
         #ray.init(local_mode=False, include_dashboard=False, ignore_reinit_error=True, log_to_driver=False)
-        #ray.init(address='auto',include_dashboard=False, ignore_reinit_error=True,log_to_driver=True, _temp_dir = '/p/home/jusers/cipolina-kun1/juwels/ray_tmp')
+        ray.init(address='auto',include_dashboard=False, ignore_reinit_error=True,log_to_driver=True, _temp_dir = '/p/home/jusers/cipolina-kun1/juwels/ray_tmp')
 
         # Rebuild the policy
         algo = Algorithm.from_checkpoint(self.checkpoint_path)
@@ -132,7 +133,6 @@ class Inference:
             obs_dicts_per_agent = self.generate_observations(distance_lst) # creates{[coalitions], [distances]}
             response_lst        = []    # Initialize list to store responses for this distance list
             final_coalitions    = set() # Initialize set to store final coalitions for this distance list
-
 
             # Run the environment on the trained model
             for agent_id, obs_dict_lst in obs_dicts_per_agent.items():
@@ -178,8 +178,7 @@ class Inference:
         '''Save the DataFrame to an Excel file
         responses_by_distance is a dictionary where keys are distance lists and values are lists of dictionaries
         '''
-        #with pd.ExcelWriter('response_data.xlsx') as writer:
-        with pd.ExcelWriter(current_dir+'/A_results/response_data.xlsx') as writer:
+        with pd.ExcelWriter(response_file) as writer:
             for distance, response in responses_by_distance.items():
                 df = pd.DataFrame(response)
                 df['current'] = df['current'].apply(list)  # Convert NumPy arrays to lists (if they are NumPy arrays)
@@ -196,12 +195,10 @@ class Inference:
 
         plt.figure(figsize=(15, 10))
 
-        # Initialize color map
-        colors = ['red', 'green', 'blue', 'purple', 'orange']
+        colors = ['red', 'green', 'blue', 'purple', 'orange']  # Initialize color map
 
         for idx, (distance_str, response_lst) in enumerate(responses_by_distance.items()):
-            # Create a dictionary to store the last coalition for each agent
-            last_coalitions = {}
+            last_coalitions = {}   # Dictionary to store the last coalition for each agent
             for entry in response_lst:
                 if entry['action'] == 1:
                     last_coalitions[entry['agent_id']] = entry['proposed']
@@ -241,7 +238,6 @@ class Inference:
             self.plot_sankey_diagram(response_lst, distance_lst)
 
     def plot_sankey_diagram(self, response_lst, distance_lst):
-        # Diagram
         labels, sources, targets, values, colors = [], [], [], [], []
         # Custom colors
         color_n = ['#55CBCD', '#CBAACB', '#FF968A', '#4DD091', '#FF5768', '#0065A2', '#57838D', '#FFC500']  # node colors - more vibrant
@@ -307,7 +303,7 @@ if __name__=='__main__':
                  'batch_size'     : 1000 # for the CV learning - one update per batch size
                 }
 
-    cls = Inference(Env,checkpoint_path, custom_env_config)
+    cls = Inference(output_dir, custom_env_config)
 
     # CHOOSE ONE
     #evaluate(custom_env_config) # this one gives some wrong actions for the same observations
