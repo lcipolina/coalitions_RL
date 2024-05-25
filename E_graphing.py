@@ -42,7 +42,7 @@ def graph_reward_n_others(rew_good_action = 10,rew_bad_action = -100 ):
 
         # Dynamically identify policy columns and process data
         for col in df.columns:
-            if 'policy_reward_mean/' in col:
+            if 'custom_metrics/' in col:
                 policy_name = col.split('/')[1]
                 unique_policies.add(policy_name)  # Add policy name to the set
                 temp_df = df[[col]].rename(columns={col: 'Reward'}).reset_index()
@@ -88,6 +88,7 @@ def graph_reward_n_others(rew_good_action = 10,rew_bad_action = -100 ):
     }
     sns.set_style("whitegrid")
     for metric, dfs in metrics_data.items():
+        plt.ioff()  #Turn off interactive mode - do not display graphs
         fig, ax = plt.subplots()
         for policy, data in dfs.items():
             sns.lineplot(x="training_iteration", y=metric, data=data, errorbar='sd', label=policy, ax=ax)
@@ -99,7 +100,7 @@ def graph_reward_n_others(rew_good_action = 10,rew_bad_action = -100 ):
                 'Max Theoretical Return': [max_theoretical_reward] * len(dfs[next(iter(dfs))])
             })
             sns.lineplot(x='training_iteration',
-                          y='Max Theoretical Return',
+                         y='Max Theoretical Return',
                          data=max_reward_data,
                          ax=ax,
                          label='Max Theoretical Return',
@@ -125,7 +126,7 @@ def graph_reward_n_others(rew_good_action = 10,rew_bad_action = -100 ):
         ax.set_title(f" Training {metric} by Policy")
         plt.legend()
         fig.savefig(os.path.join(current_dir, f"A_results/{metric.lower()}_plot_{TIMESTAMP}.pdf"), bbox_inches='tight')
-
+        plt.close(fig)
 
 
 ##################################
