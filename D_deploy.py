@@ -206,7 +206,7 @@ class Inference:
             color_mapping = {}
 
             # Annotate each point and draw connecting lines for coalitions
-            distance_lst = [round(x*100, 2) for x in eval(distance_str)]
+            distance_lst = [round(x, 2) for x in eval(distance_str)]
             for i, distance in enumerate(distance_lst):
                 agent_id = i
                 coalition_array = tuple(last_coalitions.get(agent_id, []))
@@ -229,8 +229,8 @@ class Inference:
         plt.title('Final Coalitions for Each Distance Game', fontsize=16)
         plt.yticks(range(len(responses_by_distance)))  # Show y-axis ticks for each run
         plt.xlim(0, 0.6*100)  # Set x-axis limits
-        plt.savefig(current_dir+'/A_results/final_coals_graph_' +TIMESTAMP+'.pdf')
-       # plt.show()
+        plt.savefig(current_dir+'/A_results/final_coals_graph_' +TIMESTAMP+'.png')
+        plt.show()
 
     def sankey_diagram(self, responses_by_distance, final_coalitions_by_distance):
         '''responses_by_distance and final_coalitions_by_distance are dictionaries with distance lists as keys'''
