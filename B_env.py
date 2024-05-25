@@ -82,8 +82,8 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
         super().__init__()
         self.step_count           = 0
         self.num_agents           = config_dict.get('num_agents',2)
-        self.batch_size           = config_dict.get('batch_size', 2000)         # for the CV learning - update the CV when a batch is full
-        char_config_dict          = config_dict.get('char_func_dict',{})        # characteristic function config dict
+        self.batch_size           = config_dict.get('batch_size', 2000)          # for the CV learning - update the CV when a batch is full
+        char_config_dict          = config_dict.get('char_func_dict',{})         # characteristic function config dict
         self.manual_distance_lst  = config_dict.get('manual_distances',None)     # for the curriculum learning
         self.cpu_nodes            = config_dict.get('cpu_nodes',os.cpu_count())  # number of CPUs to divide the batch size
         self.cyclic_iter          = itertools.cycle(self.manual_distance_lst) if self.manual_distance_lst is not None else None  # iterates over the list and then starts over
@@ -93,9 +93,9 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
         self.reward_dict          = {}
         self.current_coalitions   = {i: np.array([1 if i == j else 0 for j in range(self.num_agents)]) for i in range(self.num_agents)} #start on singletons - will be overriden later
         self.max_steps            = config_dict.get('max_steps',4000)
-        self.accumulated_rewards  = {agent: 0 for agent in self.agent_lst}     # To match RLLIB's per-agent output
+        self.accumulated_rewards  = {agent: 0 for agent in self.agent_lst}       # To match RLLIB's per-agent output
 
-        self.reset()                                                          # Resets time,Resets valid coals. Stores the current coalition for each agent. Selects current agent
+        self.reset()                                                             # Resets time,Resets valid coals. Stores the current coalition for each agent. Selects current agent
 
         self.action_space      = gym.spaces.Discrete(2) #accept/reject
         self.observation_space = gym.spaces.Dict({
@@ -113,7 +113,7 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
     def action_space_sample(self, agent_ids: list = None) -> MultiAgentDict:
         if agent_ids is None:
            agent_ids = self._agent_ids
-        return {id: self.action_space.sample() for id in agent_ids} #Action space is a dict
+        return {id: self.action_space.sample() for id in agent_ids}      # Action space is a dict
 
     def action_space_contains(self, x: MultiAgentDict) -> bool:
         if not isinstance(x, dict):
