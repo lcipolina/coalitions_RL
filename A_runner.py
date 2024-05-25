@@ -10,21 +10,20 @@ from G_distance_lst import DistanceGenerator
 # A_runner.py
 
 
-
 class CoalitionRunner:
     def __init__(self, setup_dict, char_func_dict, distance_gen_config):
         # Generate list of list of rnd distances and their testing counterparts - they should be generated at the same time to be chained.
         # revisit_steps should be less or equal num_steps
 
-       # Initialize other config
         self.distance_gen_dict = distance_gen_config
         self.setup_dict        = setup_dict
         self.char_func_dict    = char_func_dict
 
     def set_config_dict_n_dists(self, train_path_= None, test_path_=None):
-        ''' Creates the config dict for the gym env. First it needs to build/ receive distances.'''
-        # Training distances are needed to start the env
-        self.set_distances(train_path= train_path_, test_path=test_path_)
+        ''' Creates the config dict for the gym env. First it needs to build/ receive distances.
+        '''
+
+        self.set_distances(train_path= train_path_, test_path=test_path_)  # Training distances are needed to start the env
         # Pass the distance list to the env for CV learning
         self.custom_env_config = {
             'num_agents'      : self.distance_gen_dict['num_agents'],
@@ -131,7 +130,7 @@ def run_coalition_runner(train_n_eval = True, train_path = None,test_path  = Non
     # =====================
 
     setup_dict = {
-        'training_iterations': 3, #10*29,# (10*25),  this makes a lot of difference!!    # we need ~20 per each distance to learn 100%. Iterations = num_distances * 20
+        'training_iterations': 5, #10*29,# (10*25),  this makes a lot of difference!!    # we need ~20 per each distance to learn 100%. Iterations = num_distances * 20
         'train_batch_size'   : 500, #2900, #2800,# 2900,   # we need approx 2200 steps to learn 100%
         'seeds_lst'          :[42], # [42,100, 200, 300, 400],#[42,100, 200, 300, 400],
         'experiment_name'    :'subadditive_test',
@@ -146,7 +145,7 @@ def run_coalition_runner(train_n_eval = True, train_path = None,test_path  = Non
 
     distance_gen_config = {
         'grid_interval'       : 0.05,  # for the rnd distances - how far apart can the agents be in [0, 0.5]
-        'num_agents'          : 5,     #### 4 - CHANGE!!!!!!
+        'num_agents'          : 5,     #
         'num_steps_training'  : 10,    # how many distances to generate for training
         'revisit_steps'       : 5,     # how many times should distances repeat (to avoid catastrophic forgetting)
         'epsilon'             : 0.01,  # noise on top of the training distances to test generalization
