@@ -196,13 +196,12 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
                 'distances': np.zeros((2, self.num_agents), dtype=float)
                  }
 
-        #COALITIONS
+        # COALITIONS
         # Generate a new coalition proposal - avoid proposing the current coalition (unless is the last available) and the empty coalition
-        # Last coalition might be repeated, but that's ok, the alternative is to have an empty coalition or obscure coding
+        # OBS: Last coalition might be repeated, but that's ok, the alternative is to have an empty coalition or obscure coding
         coalition_id       = np.random.choice(len(self.valid_coalitions[self.current_agent])) # Pick an index  - avoid proposing the current coalition
         self.new_coalition = self.valid_coalitions[self.current_agent][coalition_id]          # Use idx to pick the coalition
-        # Proposed coalitions can't repeat - Remove the proposed coalition from the list of valid coalitions for the current agent
-        self.valid_coalitions[self.current_agent] = [coal for coal in self.valid_coalitions[self.current_agent] if not np.array_equal(coal, self.new_coalition)]
+        self.valid_coalitions[self.current_agent] = [coal for coal in self.valid_coalitions[self.current_agent] if not np.array_equal(coal, self.new_coalition)]  # Proposed coalitions can't repeat - Remove the proposed coalition from the list of valid coalitions for the current agent
 
         # DISTANCES
         # Update distances based on Curriculum Learning
