@@ -80,28 +80,27 @@ class CharacteristicFunction:
 class DynamicCoalitionsEnv(MultiAgentEnv):
     def __init__(self, config_dict):
         super().__init__()
-        self.step_count            = 0
-        self.num_agents            = config_dict.get('num_agents',2)
-        self.batch_size            = config_dict.get('batch_size', 2000)         # for the CV learning - update the CV when a batch is full
-        char_config_dict           = config_dict.get('char_func_dict',{})        # characteristic function config dict
-        self.manual_distance_lst  = config_dict.get('manual_distances',None)    # for the curriculum learning
-        self.cpu_nodes            = config_dict.get('cpu_nodes',os.cpu_count()) # number of CPUs to divide the batch size
+        self.step_count           = 0
+        self.num_agents           = config_dict.get('num_agents',2)
+        self.batch_size           = config_dict.get('batch_size', 2000)         # for the CV learning - update the CV when a batch is full
+        char_config_dict          = config_dict.get('char_func_dict',{})        # characteristic function config dict
+        self.manual_distance_lst  = config_dict.get('manual_distances',None)     # for the curriculum learning
+        self.cpu_nodes            = config_dict.get('cpu_nodes',os.cpu_count())  # number of CPUs to divide the batch size
         self.cyclic_iter          = itertools.cycle(self.manual_distance_lst) if self.manual_distance_lst is not None else None  # iterates over the list and then starts over
         self.char_func            = CharacteristicFunction(char_config_dict)
-        self.agent_lst            = list(range(self.num_agents))                # [0, 1, 2, ..., num_agents-1]
-        self._agent_ids           = set(self.agent_lst)                         # Required by RLLIB (key word- don't change)
+        self.agent_lst            = list(range(self.num_agents))                 # [0, 1, 2, ..., num_agents-1]
+        self._agent_ids           = set(self.agent_lst)                          # Required by RLLIB (key word- don't change)
         self.reward_dict          = {}
         self.current_coalitions   = {i: np.array([1 if i == j else 0 for j in range(self.num_agents)]) for i in range(self.num_agents)} #start on singletons - will be overriden later
-        self.max_steps             = config_dict.get('max_steps',4000)
+        self.max_steps            = config_dict.get('max_steps',4000)
+        self.accumulated_rewards  = {agent: 0 for agent in self.agent_lst}     # To match RLLIB's per-agent output
 
-        self.accumulated_rewards = {agent: 0 for agent in self.agent_lst}     # To match RLLIB's per-agent output
-
-        self.reset() # Resets time,Resets valid coals. Stores the current coalition for each agent. Selects current agent
+        self.reset()                                                          # Resets time,Resets valid coals. Stores the current coalition for each agent. Selects current agent
 
         self.action_space      = gym.spaces.Discrete(2) #accept/reject
         self.observation_space = gym.spaces.Dict({
-            'coalitions': gym.spaces.Box(low=0, high=1, shape=(2, self.num_agents), dtype=np.int32), #[current coal,proposed coal]
-            'distances': gym.spaces.Box(low=0, high=100, shape=(2, self.num_agents), dtype=np.float32) #distance vectors
+            'coalitions': gym.spaces.Box(low=0, high=1, shape=(2, self.num_agents), dtype=np.int32),   # [current coal,proposed coal]
+            'distances': gym.spaces.Box(low=0, high=1000, shape=(2, self.num_agents), dtype=np.float32) # distance vectors
         })
 
 
@@ -297,20 +296,20 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
         self.truncated_dict             = {agent: False for agent in self.agent_lst}   # whether they have been placed in a coalition
         self.truncated_dict['__all__']  = False
         self.terminated_dict            = self.truncated_dict.copy()
-        self.reward_dict                = {agent: 0 for agent in self.agent_lst}        # each episode is an independent trial
-        self.accumulated_rewards = {agent: 0 for agent in self.agent_lst}     # Reset accumulated rewards for a new episode - to match RLLIB's per-agent output
+        self.reward_dict                = {agent: 0 for agent in self.agent_lst}       # each episode is an independent trial
+        self.accumulated_rewards = {agent: 0 for agent in self.agent_lst}              # Reset accumulated rewards for a new episode - to match RLLIB's per-agent output
 
         #COALITIONS - Initial coalitions for each agent.
-        self.generate_valid_coalitions()      # populates self.valid_coalitions. This list shrinks as coalitions are proposed by the env.
-        self.set_first_coalitions()           # set the first 'current' state for each agent
+        self.generate_valid_coalitions()                                               # populates self.valid_coalitions. This list shrinks as coalitions are proposed by the env.
+        self.set_first_coalitions()                                                    # set the first 'current' state for each agent
 
         #DISTANCES - Initial distance vector for each agent (manual or rnd)
         if self.step_count == 0: #first time (only once after initializing the class - not after every reset)
-           self.generate_initial_distances()                    # includes manual lst or rnd
+           self.generate_initial_distances()                          # includes manual lst or rnd
 
         # Select the first agent to play (i.e. next agent)
         self.current_agent    = np.random.randint(0, self.num_agents - 1)
-        self.next_observation = self._get_observation()         #obs for next agent in play {[coalitions][distances]}
+        self.next_observation = self._get_observation()              # obs for next agent in play {[coalitions][distances]}
         return  {self.current_agent:self.next_observation}, {}
 
 
@@ -325,17 +324,13 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
 
         self._calculate_reward(action)                   # reward needs to be calculated before updating the coalition
 
-        # TO TEST ALL COALITIONS PRESENT
+        # Test whether all coalitions have been visited
         #print({'current agent': self.current_agent,'action':action, 'Reward': self.reward_dict[self.current_agent]})
 
         self._update_coalitions(action) # If the agent accepts the proposal - Update the coalition agent is in. Else pass
 
         # Prepare next obs: generate a new coalition proposal for the next agent
-        # Termination conditions
-        #if self.step_count >= self.max_steps:  # this doesn't work with CV learning
-        #   self.truncated_dict['__all__'] = True # sends to reset
-        #   self.step_count = 0
-           #print('ALL AGENTS TRUNCATED!!')
+        # Termination conditions for Curriculum Learning
 
         if all(len(self.valid_coalitions[agent]) == 0 for agent in range(self.num_agents)):
             self.terminated_dict['__all__'] = True
