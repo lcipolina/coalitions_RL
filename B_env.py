@@ -82,16 +82,16 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
         super().__init__()
         self.step_count            = 0
         self.num_agents            = config_dict.get('num_agents',2)
-        self.batch_size            = config_dict.get('batch_size', 2000)       # for the CV learning - update the CV when a batch is full
-        char_config_dict           = config_dict.get('char_func_dict',{})      # characteristic function config dict
-        self.manual_distance_lst   = config_dict.get('manual_distances',None)  # for the curriculum learning
-        self.cpu_nodes             = config_dict.get('cpu_nodes',os.cpu_count()) # number of CPUs to divide the batch size
-        self.cyclic_iter           = itertools.cycle(self.manual_distance_lst)
-        self.char_func             = CharacteristicFunction(char_config_dict)
-        self.agent_lst             = list(range(self.num_agents))              # [0, 1, 2, ..., num_agents-1]
-        self._agent_ids            = set(self.agent_lst)                       # Required by RLLIB (key word- don't change)
-        self.reward_dict           = {}
-        self.current_coalitions    = {i: np.array([1 if i == j else 0 for j in range(self.num_agents)]) for i in range(self.num_agents)} #start on singletons - will be overriden later
+        self.batch_size            = config_dict.get('batch_size', 2000)         # for the CV learning - update the CV when a batch is full
+        char_config_dict           = config_dict.get('char_func_dict',{})        # characteristic function config dict
+        self.manual_distance_lst  = config_dict.get('manual_distances',None)    # for the curriculum learning
+        self.cpu_nodes            = config_dict.get('cpu_nodes',os.cpu_count()) # number of CPUs to divide the batch size
+        self.cyclic_iter          = itertools.cycle(self.manual_distance_lst) if self.manual_distance_lst is not None else None  # iterates over the list and then starts over
+        self.char_func            = CharacteristicFunction(char_config_dict)
+        self.agent_lst            = list(range(self.num_agents))                # [0, 1, 2, ..., num_agents-1]
+        self._agent_ids           = set(self.agent_lst)                         # Required by RLLIB (key word- don't change)
+        self.reward_dict          = {}
+        self.current_coalitions   = {i: np.array([1 if i == j else 0 for j in range(self.num_agents)]) for i in range(self.num_agents)} #start on singletons - will be overriden later
         self.max_steps             = config_dict.get('max_steps',4000)
 
         self.accumulated_rewards = {agent: 0 for agent in self.agent_lst}     # To match RLLIB's per-agent output
@@ -195,43 +195,24 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
                 'coalitions': np.zeros((2, self.num_agents), dtype=int),
                 'distances': np.zeros((2, self.num_agents), dtype=float)
                  }
-        ''''
-        # Check if there's only one coalition left for the current agent - make sure is not the same as it current
-        if len(self.valid_coalitions[self.current_agent]) == 1: #EXPERIMENTAL
-            # If the last coalition is the same as the current coalition, represent it as an empty coalition and the coalition that's left
-            if np.array_equal(self.valid_coalitions[self.current_agent][0], self.current_coalitions[self.current_agent]):
-               self.new_coalition = self.valid_coalitions[self.current_agent][0]
-               # delete the coalition from the list of valid coalitions for the current agent
-               self.valid_coalitions[self.current_agent] = [coal for coal in self.valid_coalitions[self.current_agent] if not np.array_equal(coal, self.new_coalition)]
-               return {
-            'coalitions': np.vstack([np.zeros(self.num_agents, dtype=int), self.valid_coalitions[self.current_agent][0]]),
-            'distances': np.vstack([self.distance_lst * np.zeros(self.num_agents, dtype=int), self.distance_lst * self.valid_coalitions[self.current_agent][0]])
-        }
-        '''
-        # Generate a new coalition proposal - avoid proposing the current coalition and the empty coalition
-        '''
-        while True:
-            coalition_id       = np.random.choice(len(self.valid_coalitions[self.current_agent])) #avoid proposing the current coalition
-            self.new_coalition = self.valid_coalitions[self.current_agent][coalition_id]
-            if not np.array_equal(self.new_coalition, self.current_coalitions[self.current_agent]):
-                break
-        '''
+
         #COALITIONS
-        # Last coalition might be repeated, but that's ok, better than an infinite loop or obscure coding.
-        coalition_id       = np.random.choice(len(self.valid_coalitions[self.current_agent])) #avoid proposing the current coalition
-        self.new_coalition = self.valid_coalitions[self.current_agent][coalition_id]
+        # Generate a new coalition proposal - avoid proposing the current coalition (unless is the last available) and the empty coalition
+        # Last coalition might be repeated, but that's ok, the alternative is to have an empty coalition or obscure coding
+        coalition_id       = np.random.choice(len(self.valid_coalitions[self.current_agent])) # Pick an index  - avoid proposing the current coalition
+        self.new_coalition = self.valid_coalitions[self.current_agent][coalition_id]          # Use idx to pick the coalition
         # Proposed coalitions can't repeat - Remove the proposed coalition from the list of valid coalitions for the current agent
         self.valid_coalitions[self.current_agent] = [coal for coal in self.valid_coalitions[self.current_agent] if not np.array_equal(coal, self.new_coalition)]
+
         # DISTANCES
         # Update distances based on Curriculum Learning
         if self.step_count == np.round((self.batch_size/(self.cpu_nodes-1)),0): # CPUS-1 = num_rollout_workers. Approx nbr of steps per one batch - update only when batch is full. RLLIB divides the steps by the num_workers
            self.update_distances()    # Either add randomness to distances - or select next distance from the curriculum list
 
         return {
-            'coalitions': np.vstack([self.current_coalitions[self.current_agent], self.new_coalition]),
+            'coalitions': np.vstack([self.current_coalitions[self.current_agent],self.new_coalition]),
             'distances': np.vstack([self.distance_lst*self.current_coalitions[self.current_agent] , self.distance_lst*self.new_coalition])
         }
-
 
     def _calculate_reward(self, action,current_agent = None, current_coal = None, new_coal = None, distance_lst = None, mode = None):
         '''Reward for the playing agent. Coaltion value is calculated on-the-fly
@@ -311,7 +292,6 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
         ''' Reset and start a new episode
             Number of resets = number of episodes per iteration
         '''
-
         self.truncated_dict             = {agent: False for agent in self.agent_lst}   # whether they have been placed in a coalition
         self.truncated_dict['__all__']  = False
         self.terminated_dict            = self.truncated_dict.copy()
@@ -327,13 +307,11 @@ class DynamicCoalitionsEnv(MultiAgentEnv):
 
         #DISTANCES - Initial distance vector for each agent (manual or rnd)
         if self.step_count == 0: #first time (only once after initializing the class - not after every reset)
-           self.generate_initial_distances()   # includes manual lst or rnd
+           self.generate_initial_distances()                    # includes manual lst or rnd
 
-        # Select the first agent to play
-        #self.current_agent    = 0 # next agent in play
-        # Choose the next agent
-        self.current_agent = np.random.randint(0, self.num_agents - 1)
-        self.next_observation = self._get_observation() #obs for next agent in play {[coalitions][distances]}
+        # Select the first agent to play (i.e. next agent)
+        self.current_agent    = np.random.randint(0, self.num_agents - 1)
+        self.next_observation = self._get_observation()         #obs for next agent in play {[coalitions][distances]}
         return  {self.current_agent:self.next_observation}, {}
 
 
