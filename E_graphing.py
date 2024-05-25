@@ -127,7 +127,7 @@ def graph_reward_n_others(rew_good_action = 10,rew_bad_action = -100 ):
         ax.set_ylabel(f"{metric}")
         ax.set_title(f" Training {metric} by Policy")
         plt.legend()
-        fig.savefig(os.path.join(current_dir, f"A_results/{metric.lower()}_plot_{TIMESTAMP}.pdf"), bbox_inches='tight')
+        fig.savefig(os.path.join(current_dir, f"A_results/{metric.lower()}_plot_{TIMESTAMP}.png"), bbox_inches='tight')
         plt.close(fig)
 
 
