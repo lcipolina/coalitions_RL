@@ -88,6 +88,7 @@ def graph_reward_n_others(rew_good_action = 10,rew_bad_action = -100 ):
     }
     sns.set_style("whitegrid")
     for metric, dfs in metrics_data.items():
+        plt.ioff() # Turn off interactive mode
         fig, ax = plt.subplots()
         for policy, data in dfs.items():
             sns.lineplot(x="training_iteration", y=metric, data=data, errorbar='sd', label=policy, ax=ax)
