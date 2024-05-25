@@ -9,6 +9,8 @@ import datetime
 import os
 import pandas as pd
 import seaborn as sns
+import matplotlib
+matplotlib.use('Agg')  # Use the Agg backend
 import matplotlib.pyplot as plt
 from openpyxl import load_workbook
 from Z_utils import get_latest_file
