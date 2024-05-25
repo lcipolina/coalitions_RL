@@ -21,9 +21,9 @@ class CoalitionRunner:
         self.char_func_dict    = char_func_dict
 
     def set_config_dict_n_dists(self, train_path_= None, test_path_=None):
-        ''' Creates the config dict for the gym env. First it needs to build/ receive distances.'''
-        # Training distances are needed to start the env
-        self.set_distances(train_path= train_path_, test_path=test_path_)
+        ''' Creates the config dict for the gym env. First it needs to build/ receive distances.
+        '''
+        self.set_distances(train_path= train_path_, test_path=test_path_) # Training distances are needed to start the env
         # Pass the distance list to the env for CV learning
         self.custom_env_config = {
             'num_agents'      : self.distance_gen_dict['num_agents'],
