@@ -334,7 +334,7 @@ class Inference:
 
         responses_by_distance, accepted_coalitions_by_distance = self.play_env_custom_obs(distance_lst_input) # The first return stores the responses of all agents and the second stores the accepted coalitions
         self.plot_final_coalitions(responses_by_distance, accepted_coalitions_by_distance)
-        self.sankey_diagram(responses_by_distance) # takes forever to save if there are multiple nodes.
+       # self.sankey_diagram(responses_by_distance) # takes forever to save if there are multiple nodes.
         self.save_results_to_excel(responses_by_distance, accepted_coalitions_by_distance)  # Assuming this method exists for saving results to Excel
 
 
