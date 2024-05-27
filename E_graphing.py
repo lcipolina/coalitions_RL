@@ -74,7 +74,6 @@ def graph_reward_n_others(rew_good_action = 10,rew_bad_action = -100 ):
     # Calculate Max Theoretical Reward per agent: max theo rew = 160.
     # num agents = 5, nbr coalitions each: 2^(n-1) = 2^4 = 16, rew_good_action: = 10
     number_of_policies = len(unique_policies)  # Number of unique policies
-    max_theoretical_reward = number_of_policies * (2 ** (number_of_policies - 1)) * rew_good_action
     max_theoretical_reward = (2 ** (number_of_policies - 1)) * rew_good_action
 
     # Calculate AVG Reward Random Policy (only takes 2 actions, so 50% chances each)
