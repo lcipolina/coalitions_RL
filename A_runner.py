@@ -158,9 +158,9 @@ def run_coalition_runner(train_n_eval = True, train_path = None,test_path  = Non
                         max_coalitions_to_plot = 5) # How many distances to evaluate. To make it faster.
     else: # Evaluate only
         runner.evaluate(checkpoint_path=checkpoint_path_trained,
-                            train_path= train_path,
-                            test_path =test_path,
-                            max_coalitions_to_plot = 5) # How many distances to evaluate. To make it faster.
+                        train_path= train_path,
+                        test_path =test_path,
+                        max_coalitions_to_plot = 5) # How many distances to evaluate. To make it faster.
 
 
 #=====================================
