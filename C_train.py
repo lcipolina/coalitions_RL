@@ -37,7 +37,7 @@ class RunRay:
 
     def __init__(self, setup_dict,custom_env_config, experiment_name = 'coalitions_rl'):
         current_dir      = os.path.dirname(os.path.realpath(__file__))
-        self.excel_path  = os.path.join(current_dir, 'A_results', f"output_{TIMESTAMP}.xlsx")
+        self.excel_path  = os.path.join(current_dir, 'A_results', f"output_{TIMESTAMP}.xlsx") # Name for the saved file
         self.jason_path  = os.path.join(current_dir, 'best_checkpoint_'+TIMESTAMP+'.json')
         self.clear_excel(self.excel_path)
         self.clear_json(self.jason_path)
@@ -146,7 +146,7 @@ class RunRay:
         # Process results
         df = best_result_grid.metrics_dataframe  #Access the entire *history* of reported metrics from a Result as a pd DataFrame. And not just the best iteration
 
-        # Step 1: Identify columns for new average rewards per policy
+        # Step 1: Identify columns for average rewards per policy
         custom_reward_cols = [col for col in df.columns if col.startswith('custom_metrics/reward_policy')]
 
         # Identify columns for losses and entropies

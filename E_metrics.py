@@ -8,7 +8,7 @@ from matplotlib.patches import Patch
 from Z_utils import get_latest_file
 
 '''Generates BoxPlot and agents response metrics.
-Script generates 'response_data.xls' file in A_results folder
+The 'D_deploy.py' generates the 'response_data.xls' file from the Env at Play in A_results folder
 From that data it generates a boxplot and summary_table.xls in the same folder
 The boxplot is generated directly from the 'response_data.xls'
 The summary_table is just for information purpopses
