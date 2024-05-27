@@ -10,7 +10,6 @@ from G_distance_lst import DistanceGenerator
 # A_runner.py
 
 
-
 class CoalitionRunner:
     def __init__(self, setup_dict, char_func_dict, distance_gen_config):
         # Generate list of list of rnd distances and their testing counterparts - they should be generated at the same time to be chained.
@@ -23,7 +22,8 @@ class CoalitionRunner:
     def set_config_dict_n_dists(self, train_path_= None, test_path_=None):
         ''' Creates the config dict for the gym env. First it needs to build/ receive distances.
         '''
-        self.set_distances(train_path= train_path_, test_path=test_path_) # Training distances are needed to start the env
+
+        self.set_distances(train_path= train_path_, test_path=test_path_)  # Training distances are needed to start the env
         # Pass the distance list to the env for CV learning
         self.custom_env_config = {
             'num_agents'      : self.distance_gen_dict['num_agents'],
@@ -71,33 +71,26 @@ class CoalitionRunner:
         return train_result['checkpoint_path'] # used for testing
 
     # EVALUATE WITH ONE CHECKPOINT ====================================
-    def evaluate(self, checkpoint_path=None, train_path= None, test_path = None):
+    def evaluate(self, checkpoint_path=None, train_path= None, test_path = None, max_coalitions_to_plot = 1):
         '''Reads from checkpoint and plays policyin env. Graphs Boxplot and Accuracy
            To load a checkpoint. Num CPU requested should be the at min, same as training. Otherwise look at open issue in Github.
            :inputs: training dists are needed to initialize the env
+
+           OBS: to run the sankey diagram, better to do it from a checkpoint as it takes a lot of time
         '''
         if test_path is None:
            test_distance_lst=self.test_distance_lst
         else:
             test_distance_lst = self.open_distance_file(filepath = test_path)  # Open and process list of list file
 
-        #if checkpoint_path is None:
-        #    checkpoint_path = self.checkpoint_path
-        #else:
-        checkpoint_path=checkpoint_path
+        # Training and testing distances and other vbles for the env
+        self.set_config_dict_n_dists(train_path_= train_path, test_path_= test_path)    # sets the self.custom_env_config
+        eval_cls = evaluate_policy(checkpoint_path, self.custom_env_config)             # Initialize the Inference class with the checkpoint path and custom environment configuration
+        eval_cls.run_inference_and_generate_plots(distance_lst_input=test_distance_lst, max_coalitions=max_coalitions_to_plot) # Run inference on the env and generate coalition plots and 'response_data'
+        metrics()                                                                       # Reads the response_data.xls and generates boxplot. Generates the 'summary_table.xls'
 
-        # Training and testing distances and vbles for the env
-        # sets the self.custom_env_config
-        self.set_config_dict_n_dists(train_path_= train_path, test_path_= test_path)
-
-        eval_cls = evaluate_policy(checkpoint_path, self.custom_env_config)
-        responses_by_distance, final_coalitions_by_distance = eval_cls.play_env_custom_obs(distance_lst_input=test_distance_lst)
-        eval_cls.excel_n_plot(responses_by_distance, final_coalitions_by_distance) #plots generalization
-        metrics() # reads the summary_table.xls and generates boxplot from the response_data
-
-
-    # Helper function
     def open_distance_file(self,filepath):
+        '''Opens and processes the list of list file'''
         with open(filepath, 'r') as file:
             content = file.read()
         # Directly evaluate the string content as a Python expression
@@ -121,7 +114,7 @@ def run_coalition_runner(train_n_eval = True, train_path = None,test_path  = Non
     #test_path  = '/p/home/jusers/cipolina-kun1/juwels/coalitions/dist_testing_jan31.txt'
 
     # TRAIN n EVAL
-    train_n_eval = True
+    #train_n_eval = True
 
     # EVAL
    # train_n_eval = False # inference only
@@ -130,22 +123,20 @@ def run_coalition_runner(train_n_eval = True, train_path = None,test_path  = Non
     # =====================
 
     setup_dict = {
-        'training_iterations': 3, #10*29,# (10*25),  this makes a lot of difference!!    # we need ~20 per each distance to learn 100%. Iterations = num_distances * 20
-        'train_batch_size'   : 500, #2900, #2800,# 2900,   # we need approx 2200 steps to learn 100%
+        'training_iterations': 4, #10*29,# (10*25),  this makes a lot of difference!!    # we need ~20 per each distance to learn 100%. Iterations = num_distances * 20
+        'train_batch_size'   :500, #2900, #2800,# 2900,   # we need approx 2200 steps to learn 100%
         'seeds_lst'          :[42], # [42,100, 200, 300, 400],#[42,100, 200, 300, 400],
-        'experiment_name'    :'coalition_rl',
-        'cpu_nodes'          : 8 #change it on SLURM  - more than ~38 brakes the custom callbacks (other things work)
+        'experiment_name'    :'subadditive_test',
+        'cpu_nodes'          : 7 #change it on SLURM  - more than ~38 brakes the custom callbacks (other things work)
     }
-
     char_func_dict = {
-        'mode': 'ridesharing',
+        'mode': 'ridesharing', #'subadditive'
         'k'   :  20,   #### 1,
         'alpha':  1   #### 60,
     }
-
     distance_gen_config = {
         'grid_interval'       : 0.05,  # for the rnd distances - how far apart can the agents be in [0, 0.5]
-        'num_agents'          : 5,     #### 4 - CHANGE!!!!!!
+        'num_agents'          : 5,     #
         'num_steps_training'  : 10,    # how many distances to generate for training
         'revisit_steps'       : 5,     # how many times should distances repeat (to avoid catastrophic forgetting)
         'epsilon'             : 0.01,  # noise on top of the training distances to test generalization
@@ -162,12 +153,14 @@ def run_coalition_runner(train_n_eval = True, train_path = None,test_path  = Non
         # EVALUATE
         # NOTE: The 'compute_action' exploration = False gives better results than True
         runner.evaluate(checkpoint_path=checkpoint_path_,
-                        train_path= train_path, #needed to build the env
-                        test_path =test_path)
-    else:
+                        train_path= train_path,
+                        test_path =test_path,
+                        max_coalitions_to_plot = 5) # How many distances to evaluate. To make it faster.
+    else: # Evaluate only
         runner.evaluate(checkpoint_path=checkpoint_path_trained,
-                            train_path= train_path, #needed to build the env
-                            test_path =test_path)
+                        train_path= train_path,
+                        test_path =test_path,
+                        max_coalitions_to_plot = 5) # How many distances to evaluate. To make it faster.
 
 
 #=====================================
@@ -177,8 +170,11 @@ if __name__ == '__main__':
 
     #======== Because of the SLURM runner, this needs to be here (otherwise not taken)
     # If we want to use a pre-set list of distances - for reproducibility
-    train_path  = '/Users/lucia/Desktop/LuciaArchive/000_A_MY_RESEARCH/00-My_Papers/Ridesharing/000-A-RidesharingMARL/00-Codes/coalitions/A-coalitions_paper/dist_train_jan22.txt'
-    test_path  = '/Users/lucia/Desktop/LuciaArchive/000_A_MY_RESEARCH/00-My_Papers/Ridesharing/000-A-RidesharingMARL/00-Codes/coalitions/A-coalitions_paper/dist_test_jan22.txt'
+    # OBS: distances were multiplied by 100 to distinguish from no-agent distance (zero)
+   # train_path  = '/Users/lucia/Desktop/LuciaArchive/000_A_MY_RESEARCH/00-My_Papers/Ridesharing/000-A-RidesharingMARL/00-Codes/coalitions/A-coalitions_paper/dist_train_jan22.txt'
+   # test_path  = '/Users/lucia/Desktop/LuciaArchive/000_A_MY_RESEARCH/00-My_Papers/Ridesharing/000-A-RidesharingMARL/00-Codes/coalitions/A-coalitions_paper/dist_test_jan22.txt'
+
+    train_path, test_path = None, None
 
     # ALSO CHANGE inside HERE: run_coalition_runner for "train and eval" or "eval only"
 
@@ -187,9 +183,9 @@ if __name__ == '__main__':
     checkpoint_path_trained = None
 
     # EVAL
-    #train_n_eval = False # inference only
+   #train_n_eval = False # inference only
    # checkpoint_path_trained = \
-   #"/Users/lucia/Desktop/ray_results/new_distances/PPO_ShapleyEnv_466ef_00000_0_2024-02-01_17-30-56/checkpoint_000290"
+   # "/Users/lucia/ray_results/subadditive_test/PPO_DynamicCoalitionsEnv_4ec75_00000_0_2024-05-26_15-53-18/checkpoint_000004"
     # =====================
 
 

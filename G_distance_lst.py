@@ -68,7 +68,9 @@ class DistanceGenerator:
                 revisit_location = random.choice(distance_list[:-1])
                 distance_list.append(revisit_location)
                 current_locations = revisit_location.copy()
-        return distance_list
+
+        multiplied_data = [[element * 100 for element in sublist] for sublist in distance_list]  # Multiply each number by 100 - to work better on the env
+        return multiplied_data
 
     def generate_training_distances(self):
         initial_locations       = self.initialize_agent_locations()
@@ -79,15 +81,15 @@ class DistanceGenerator:
     def generate_testing_distances_n_plot(self,train_distance_lst=None ):
         '''Takes the training distances and adds an epsilon - so that tran is fairly close to test'''
         testing_distances = []
-        if train_distance_lst is None: #if dist list was generated inside this class
-           num_obs = len(self.training_distances)  #loop over the entire training set
+        if train_distance_lst is None:                         # If dist list was generated inside this class
+           num_obs = len(self.training_distances)              # Loop over the entire training set
         else:
-           num_obs = len(train_distance_lst) # if dist list was passed.
+           num_obs = len(train_distance_lst)                   # If dist list was passed.
            self.training_distances = train_distance_lst
-        for distance_set in self.training_distances[:num_obs]: #loop over a slice
+        for distance_set in self.training_distances[:num_obs]: # Loop over a slice
         #for distance_set in self.training_distances: #loop over all distances - inlcuding the revisit ones (will be included twice)
-                new_set = [round(loc + self.epsilon, 2) for loc in distance_set]
-                new_set = [min(max(self.start_value, loc), 0.5) for loc in new_set]
+                new_set = [round(loc + self.epsilon*100, 2) for loc in distance_set]
+                new_set = [min(max(self.start_value, loc), 0.5*100) for loc in new_set]
                 testing_distances.append(new_set)
         self.testing_distances = testing_distances
 
