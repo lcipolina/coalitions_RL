@@ -168,13 +168,10 @@ def run_coalition_runner(train_n_eval = True, train_path = None,test_path  = Non
 
 if __name__ == '__main__':
 
-    #======== Because of the SLURM runner, this needs to be here (otherwise not taken)
     # If we want to use a pre-set list of distances - for reproducibility
     # OBS: distances were multiplied by 100 to distinguish from no-agent distance (zero)
-   # train_path  = '/Users/lucia/Desktop/LuciaArchive/000_A_MY_RESEARCH/00-My_Papers/Ridesharing/000-A-RidesharingMARL/00-Codes/coalitions/A-coalitions_paper/dist_train_jan22.txt'
-   # test_path  = '/Users/lucia/Desktop/LuciaArchive/000_A_MY_RESEARCH/00-My_Papers/Ridesharing/000-A-RidesharingMARL/00-Codes/coalitions/A-coalitions_paper/dist_test_jan22.txt'
-
-    train_path, test_path = None, None
+    train_path  = '/Users/lucia/Desktop/LuciaArchive/000_A_MY_RESEARCH/00-My_Papers/Ridesharing/000-A-RidesharingMARL/00-Codes/coalitions/A-coalitions_paper/dist_train_jan22.txt'
+    test_path  = '/Users/lucia/Desktop/LuciaArchive/000_A_MY_RESEARCH/00-My_Papers/Ridesharing/000-A-RidesharingMARL/00-Codes/coalitions/A-coalitions_paper/dist_test_jan22.txt'
 
     # ALSO CHANGE inside HERE: run_coalition_runner for "train and eval" or "eval only"
 
