@@ -55,7 +55,7 @@ class RunRay:
         # Setup Config
         #_____________________________________________________________________________________________
 
-        # TRAINER CONFIG - custom model (action and loss) and custom env
+        # TRAINER CONFIG - custom env
         train_batch_size_ = self.setup_dict['train_batch_size']
         seed              = self.setup_dict['seed']
         train_iteration   = self.setup_dict['training_iterations']

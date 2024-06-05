@@ -152,14 +152,14 @@ def run_coalition_runner(train_n_eval = True, train_path = None,test_path  = Non
 
         # EVALUATE
         # NOTE: The 'compute_action' exploration = False gives better results than True
-        runner.evaluate(checkpoint_path=checkpoint_path_,
-                        train_path= train_path,
-                        test_path =test_path,
+        runner.evaluate(checkpoint_path = checkpoint_path_,
+                        train_path      = train_path,
+                        test_path       = test_path,
                         max_coalitions_to_plot = 5) # How many distances to evaluate. To make it faster.
     else: # Evaluate only
-        runner.evaluate(checkpoint_path=checkpoint_path_trained,
-                        train_path= train_path,
-                        test_path =test_path,
+        runner.evaluate(checkpoint_path = checkpoint_path_trained,
+                        train_path      = train_path,
+                        test_path       = test_path,
                         max_coalitions_to_plot = 5) # How many distances to evaluate. To make it faster.
 
 
@@ -190,3 +190,5 @@ if __name__ == '__main__':
                        train_path = train_path,
                        test_path  = test_path,
                        checkpoint_path_trained =checkpoint_path_trained )
+
+
