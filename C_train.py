@@ -65,10 +65,11 @@ class RunRay:
         lr_start,lr_end,lr_time = 2.5e-4,  2.5e-5, 50 * 1000000 #embelishments of the lr's
 
         # Get the trainer with the base configuration  - #OBS: no need to register Env anymore, as it is passed on the trainer config!
-        trainer_config = get_marl_trainer_config(Env, self.custom_env_config,
-                            train_batch_size_, lr_start, lr_time, lr_end, NUM_CPUS, seed,
-                            fcnet_hiddens=[400, 400], entropy_coeff=0.03, num_sgd_iter=10,
-                            kl_coeff=0.5, gamma=0.5, enable_learner_api=False)
+        trainer_config = get_marl_trainer_config(Env, self.custom_env_config, self.setup_dict,
+                                    train_batch_size_, lr_start, lr_time, lr_end, NUM_CPUS, seed,
+                                    lr_start, lr_time, lr_end, fcnet_hiddens=[400, 400], entropy_coeff=0.03,
+                                    fcnet_hiddens=[400, 400], entropy_coeff=0.03, num_sgd_iter=10,
+                                    num_sgd_iter=10, kl_coeff=0.5, gamma=0.5, enable_learner_api=False)
 
         #_____________________________________________________________________________________________
         # Setup Trainer
