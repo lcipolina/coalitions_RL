@@ -95,34 +95,25 @@ def policy_mapping_fn(agent_id, episode, worker, **kwargs):
 # Create PPO config dict
 # Including the CustomCallback
 #***********************************************************************
-def get_marl_trainer_config(env_generator, custom_env_config, train_batch_size_, lr_start, lr_time, lr_end, NUM_CPUS, seed,
+
+
+
+def get_marl_trainer_config(env_generator, custom_env_config,setup_dict, lr_start=None, lr_time=None, lr_end=None,
                             fcnet_hiddens=[400, 400], entropy_coeff=0.03, num_sgd_iter=10,
                             kl_coeff=0.5, gamma=0.5, enable_learner_api=False):
     """
     Generates a base training configuration for PPO with customizable options.
 
     Parameters:
-    - env: The environment class or string identifier.
-    - custom_env_config: Configuration dict for the environment.
-    - policy_dict: Function returning a dictionary of policy specifications.
-    - policy_mapping_fn: Function that maps agents to policies.
-    - custom_callback: Custom callback class for use with the trainer.
-    - train_batch_size_: Batch size for training.
-    - lr_start: Starting learning rate.
-    - lr_time: Time step where learning rate scheduling ends.
-    - lr_end: Ending learning rate.
-    - NUM_CPUS: Number of CPU cores to use for rollouts.
-    - seed: Random seed for reproducibility.
-    - fcnet_hiddens: List of hidden units for each fully connected layer.
-    - entropy_coeff: Coefficient of entropy used for training.
-    - num_sgd_iter: Number of SGD iterations.
-    - kl_coeff: KL coefficient for policy stability.
-    - gamma: Discount factor.
-    - enable_learner_api: Flag to enable or disable the learner API.
-
+    - env: The environment class or string identifier. NOT the instance of a registered env.
     Returns:
     - An instance of PPOConfig with the specified configuration.
     """
+
+    train_batch_size_ = setup_dict['train_batch_size']
+    seed              = setup_dict['seed']
+    NUM_CPUS          = setup_dict['cpu_nodes']
+
     env_object = env_generator(custom_env_config)
     config_dict = (PPOConfig()
             .environment(env=env_generator, env_config=custom_env_config, disable_env_checking=True)  # Register the Env!

@@ -2,7 +2,7 @@
 
 import ast
 from C_train import RunRay as train_policy
-from D_deploy import Inference as evaluate_policy
+from D_deploy import Inference as Inference
 from E_metrics import main as metrics
 from E_graphing import graph_reward_n_others
 from G_distance_lst import DistanceGenerator
@@ -22,7 +22,6 @@ class CoalitionRunner:
     def set_config_dict_n_dists(self, train_path_= None, test_path_=None):
         ''' Creates the config dict for the gym env. First it needs to build/ receive distances.
         '''
-
         self.set_distances(train_path= train_path_, test_path=test_path_)  # Training distances are needed to start the env
         # Pass the distance list to the env for CV learning
         self.custom_env_config = {
@@ -60,10 +59,9 @@ class CoalitionRunner:
     # RUN THE ENTIRE TRAINING LOOP ====================================
     def train(self,train_path = None,test_path=None):
         '''Runs the entire training loop
-           The 'test_path' logic needs to be implemented  '''
-
-        # Training and testing distances and vbles for the env
-        self.set_config_dict_n_dists(train_path_= train_path, test_path_= test_path)
+           The 'test_path' logic needs to be implemented
+        '''
+        self.set_config_dict_n_dists(train_path_= train_path, test_path_= test_path) # Training and testing distances and vbles for the env
         # Start Ray to train saves 'output.xlsx'
         train_result         = train_policy(self.setup_dict, self.custom_env_config, self.setup_dict['experiment_name']).train()
         # Reads 'output.xlsx' and generates training graphs avg and rewards per seed - reward, loss, entropy
@@ -85,7 +83,7 @@ class CoalitionRunner:
 
         # Training and testing distances and other vbles for the env
         self.set_config_dict_n_dists(train_path_= train_path, test_path_= test_path)    # sets the self.custom_env_config
-        eval_cls = evaluate_policy(checkpoint_path, self.custom_env_config)             # Initialize the Inference class with the checkpoint path and custom environment configuration
+        eval_cls = Inference(checkpoint_path, self.custom_env_config, self.setup_dict)
         eval_cls.run_inference_and_generate_plots(distance_lst_input=test_distance_lst, max_coalitions=max_coalitions_to_plot) # Run inference on the env and generate coalition plots and 'response_data'
         metrics()                                                                       # Reads the response_data.xls and generates boxplot. Generates the 'summary_table.xls'
 
@@ -190,5 +188,3 @@ if __name__ == '__main__':
                        train_path = train_path,
                        test_path  = test_path,
                        checkpoint_path_trained =checkpoint_path_trained )
-
-

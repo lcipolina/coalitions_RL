@@ -26,6 +26,8 @@ from itertools import permutations
 import ray
 from ray.tune.registry import register_env
 from ray.rllib.algorithms.algorithm import Algorithm
+from ray.rllib.utils.checkpoints import get_checkpoint_info
+from C_ppo_config import get_marl_trainer_config
 
 current_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -52,9 +54,10 @@ from B_env import DynamicCoalitionsEnv as Env            # custom environment
 
 class Inference:
 
-    def __init__(self, checkpoint_path, custom_env_config):
+    def __init__(self, checkpoint_path, custom_env_config, setup_dict):
         self.checkpoint_path   = checkpoint_path
         self.custom_env_config = custom_env_config
+        self.setup_dict        = setup_dict
         self.env               = Env(custom_env_config)
         register_env("custom_env", lambda env_ctx: self.env) #the register_env needs a callable/iterable
 
@@ -99,8 +102,24 @@ class Inference:
         ray.init(local_mode=True, include_dashboard=False, ignore_reinit_error=True, log_to_driver=False)
         #ray.init(address='auto',include_dashboard=False, ignore_reinit_error=True,log_to_driver=True, _temp_dir = '/p/home/jusers/cipolina-kun1/juwels/ray_tmp')
 
-        # Rebuild the policy
-        algo = Algorithm.from_checkpoint(self.checkpoint_path)
+        # Inference with less number of CPUs Convert checkpoint info to algorithm state
+        checkpoint_info = get_checkpoint_info(self.checkpoint_path)
+        state = Algorithm._checkpoint_info_to_algorithm_state(
+            checkpoint_info=checkpoint_info,
+            policy_ids=None,                             # Adjust if using specific policy IDs; might be auto-inferred in your case
+            policy_mapping_fn=None,                      # Set to None as we'll configure policies directly in the config
+            policies_to_train=None,                      # Specify if training specific policies
+        )
+
+        # Need to bring the config dict exactly as it was when training (otherwise won't work)
+        self.setup_dict['cpu_nodes'] = 7                 # Modify the configuration for your multi-agent setup and 7 CPU cores
+        self.setup_dict['seed']      = 42                # Because the setup_dict actually contains a lst, not a single value
+        modified_config  = get_marl_trainer_config(Env, self.custom_env_config, self.setup_dict)
+        state["config"]  = modified_config.to_dict()     # Inject the modified configuration into the state
+        algo = Algorithm.from_state(state)               # Load the algorithm from the modified state
+
+        # Rebuild the policy - old way
+        #algo = Algorithm.from_checkpoint(self.checkpoint_path)
 
         # Initialize variables
         responses_by_distance  = {}            # Dict to store responses by distance list
@@ -131,7 +150,7 @@ class Inference:
 
                    # print('obs_dict', obs_dict)
 
-                    # Compute action
+                    # Compute action - This way needs flattened obs dict
                     action, states, extras_dict = algo.get_policy(policy_id=policy_agent).compute_single_action(obs_dict, explore=False)
 
                     # Get reward
