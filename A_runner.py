@@ -9,10 +9,7 @@ from E_graphing import graph_reward_n_others
 from G_distance_lst import DistanceGenerator
 import os
 
-
-current_directory = os.getcwd()
-
-
+script_directory = os.path.dirname(os.path.abspath(__file__))
 
 
 class CoalitionRunner:
@@ -113,8 +110,8 @@ def run_coalition_runner(train_n_eval = True, train_path = None,test_path  = Non
 
     #======== Because of the SLURM runner, this needs to be here (otherwise not taken)
     # If we want to use a pre-set list of distances - for reproducibility
-    # train_path = os.path.join(current_directory, 'dist_train_jan22.txt')
-    # test_path = os.path.join(current_directory, 'dist_test_jan22.txt')
+    # train_path = os.path.join(script_directory, 'dist_train_jan22.txt')
+    # test_path = os.path.join(script_directory, 'dist_test_jan22.txt')
 
     # TRAIN n EVAL
     #train_n_eval = True
@@ -173,8 +170,8 @@ if __name__ == '__main__':
 
     # If we want to use a pre-set list of distances - for reproducibility
     # OBS: distances were multiplied by 100 to distinguish from no-agent distance (zero)
-    train_path = os.path.join(current_directory, 'dist_train_jan22.txt')
-    test_path = os.path.join(current_directory, 'dist_test_jan22.txt')
+    train_path = os.path.join(script_directory, 'dist_train_jan22.txt')
+    test_path = os.path.join(script_directory, 'dist_test_jan22.txt')
     # ALSO CHANGE inside HERE: run_coalition_runner for "train and eval" or "eval only"
 
     # TRAIN n Inference
