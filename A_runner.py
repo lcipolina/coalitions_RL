@@ -122,12 +122,16 @@ def run_coalition_runner(train_n_eval = True, train_path = None,test_path  = Non
     #"/p/home/jusers/cipolina-kun1/juwels/ray_results/new_distances/PPO_ShapleyEnv_01c47_00000_0_2024-02-01_15-34-29/checkpoint_000290"
     # =====================
 
+    #TODO: check what's going on with the prints after the training here:
+    # 'training_iteration': dfs[next(iter(dfs))]['training_iteration'],
+    # MA PERECE QUE LO HABIA ARREGLADO EN EL BRANCH DE JULICH - ver como corre en casa!
+    
     setup_dict = {
-        'training_iterations': 4, #10*29,# (10*25),  this makes a lot of difference!!    # we need ~20 per each distance to learn 100%. Iterations = num_distances * 20
-        'train_batch_size'   :500, #2900, #2800,# 2900,   # we need approx 2200 steps to learn 100%
+        'training_iterations': 5, #10*29,# (10*25),  this makes a lot of difference!!    # we need ~20 per each distance to learn 100%. Iterations = num_distances * 20
+        'train_batch_size'   :2500, #2900, #2800,# 2900,   # we need approx 2200 steps to learn 100%
         'seeds_lst'          :[42], # [42,100, 200, 300, 400],#[42,100, 200, 300, 400],
         'experiment_name'    :'subadditive_test',
-        'cpu_nodes'          : 38 #change it on SLURM  - more than ~38 brakes the custom callbacks (other things work)
+        'cpu_nodes'          : 35 #35 max for Alpha - change it on SLURM  - more than ~38 brakes the custom callbacks (other things work)
     }
     char_func_dict = {
         'mode': 'ridesharing', #'subadditive'
