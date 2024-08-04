@@ -9,11 +9,7 @@ http://researchers.lille.inria.fr/~lazaric/Webpage/Publications_files/munoz2007l
 
 '''  COULDNT REPLICATE THE PAPER - Agent's don't reach the max return and they don't form the optimal coalition
 
-'''  COULDNT REPLICATE THE PAPER - Agent's don't reach the max return and they don't form the optimal coalition
 
-Coalitions should form as follows:
-- 1 cooker and 2 helpers can make a cake worth 10 points
-- 4 cookers alone can make a cake worth 10 points
 Coalitions should form as follows:
 - 1 cooker and 2 helpers can make a cake worth 10 points
 - 4 cookers alone can make a cake worth 10 points
@@ -26,7 +22,6 @@ Let's consider a simplified example where there are three possible coalitions: C
 Rows represent the coalition the agent is currently in.
 Each agent can choose an action to move to any other coalition or stay in the same one.
 
-Agents have "types" (e.g., 'cooker' or 'helper') that determine their rewards based on the coalition they are in.
 Agents have "types" (e.g., 'cooker' or 'helper') that determine their rewards based on the coalition they are in.
 Each type of agent has one Q-table like this
 
@@ -365,13 +360,6 @@ def plot_cumulative_returns(returns_per_agent, num_episodes):
     plt.savefig('cumulative_returns.png')
 
 
-
-#================================================================================================
-#+--------------------------------- Simulation and Training ----------------------------------+
-#================================================================================================
-
-
-
 #================================================================================================
 #+--------------------------------- Simulation and Training ----------------------------------+
 #================================================================================================
@@ -439,9 +427,6 @@ if __name__ == "__main__":
         env.render()
         print("Episode", episode, "completed.")
 
-
-    # Final results
-    print("Returns per agent:", {k: np.sum(v) for k, v in episode_rewards.items()})
 
     # Final results
     print("Returns per agent:", {k: np.sum(v) for k, v in episode_rewards.items()})
