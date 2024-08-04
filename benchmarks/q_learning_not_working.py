@@ -6,16 +6,21 @@ import matplotlib.pyplot as plt
 
 
 
-''' RUNS BETTER ON COLAB!!!! - COULNT MAKE IT CONVERGE - Not used at the end
+'''  COULDNT REPLICATE THE PAPER - Agent's don't reach the max return and they don't form the optimal coalition
+
+Coalitions should form as follows:
+- 1 cooker and 2 helpers can make a cake worth 10 points
+- 4 cookers alone can make a cake worth 10 points
 
 
 Implements metod by Cote et al for Coalition Formation
-It's just a simple TABULAR Qlearning
+It's just a simple TABULAR Qlearning with multiple agents
 
 Let's consider a simplified example where there are three possible coalitions: Coalition 0, Coalition 1, and Coalition 2.
-Rows represent the coalition the agent is currently in
+Rows represent the coalition the agent is currently in.
 Each agent can choose an action to move to any other coalition or stay in the same one.
 
+Agents have "types" (e.g., 'cooker' or 'helper') that determine their rewards based on the coalition they are in.
 Each type of agent has one Q-table like this
 
           +-----------+-----------+-----------+
@@ -31,8 +36,9 @@ Each type of agent has one Q-table like this
 
 '''
 
-
+#==============================================================================
 # Characteristic Function Class
+#==============================================================================
 class CharacteristicFunction:
     def __init__(self, value_function):
         """
@@ -50,7 +56,7 @@ class CharacteristicFunction:
         return self.value_function(coalition)
 
     def calculate_marginal_contribution(self, coalition, agent):
-        """
+        """ This is to assign rewards to agents based on their marginal contribution to the coalition.
         Calculate the marginal contribution of a single agent to a coalition.
         :param coalition: List of agent types representing the current coalition.
         :param agent: The agent whose marginal contribution is to be calculated.
@@ -185,7 +191,7 @@ class CoalitionFormationEnv(gym.Env):
         if old_coalition != new_coalition:
             self.coalition_structures[old_coalition].remove(self.agent_types[agent_id]) # Remove the agent's type from the old coalition
             self.coalition_structures[new_coalition].append(self.agent_types[agent_id]) # Add the agent's type to the new coalition
-            self.agent_coalitions[agent_id] = new_coalition  # Update the agent's coalition assignment in the state array
+            self.agent_coalitions[agent_id] = new_coalition                             # Update the agent's coalition assignment in the state array
 
         # Calculate reward
         current_coalition      = self.coalition_structures[new_coalition] # Retrieve the agent's current coalition to calculate the marginal contribution
@@ -204,7 +210,6 @@ class CoalitionFormationEnv(gym.Env):
     def _get_observation(self, old_coalition, new_coalition):
         """
         Construct the observation dictionary to pass to the policy.
-
         :param old_coalition: The previous coalition index of the acting agent.
         :param new_coalition: The new coalition index of the acting agent.
         :return: An observation dictionary containing the old/new coalition, next agent ID, and type.
@@ -335,7 +340,6 @@ def discounted_returns(rewards, gamma=0.9):
 def plot_cumulative_returns(returns_per_agent, num_episodes):
     """
     Plot the cumulative discounted returns per agent.
-
     :param returns_per_agent: Dictionary mapping agent IDs to their cumulative returns over episodes.
     :param num_episodes: Number of episodes for which to plot the data.
     """
@@ -350,16 +354,19 @@ def plot_cumulative_returns(returns_per_agent, num_episodes):
     #plt.show()
     plt.savefig('cumulative_returns.png')
 
-#----------------------------------------------------------------------------------------------------------------
-# Simulation and Training
-#----------------------------------------------------------------------------------------------------------------
+
+
+#================================================================================================
+#+--------------------------------- Simulation and Training ----------------------------------+
+#================================================================================================
+
 if __name__ == "__main__":
     # Initialize the environment and policy
-    num_agents = 6 #More than 4, run on Colab  - needs to be even number - ideally 2 cookers and 4 helpers - but with more than 4 agents it won't run on my PC
-    agent_types = ['cooker'] * (num_agents // 2) + ['helper'] * (num_agents // 2)
+    num_agents     = 6 #More than 4, run it on Colab  - needs to be even number - ideally 2 cookers and 4 helpers - but with more than 4 agents it won't run on my PC
+    agent_types    = ['cooker'] * (num_agents // 2) + ['helper'] * (num_agents // 2)
     num_coalitions = (num_agents // 2) + 1
-    num_actions = num_coalitions  # Each agent can move to any of the coalition indices
-    policy = MultiAgentQLearning(agent_types, num_actions)
+    num_actions    = num_coalitions  # Each agent can move to any of the coalition indices
+    policy         = MultiAgentQLearning(agent_types, num_actions)
 
     # Initialize returns storage
     returns_per_agent = {agent_id: [] for agent_id in range(num_agents)}
@@ -368,8 +375,8 @@ if __name__ == "__main__":
     env = CoalitionFormationEnv(num_agents=num_agents, agent_types=agent_types, policy=policy)
 
     # Simulation and Training Loop
-    num_episodes = 70
-    gamma = 0.9  # Discount factor
+    num_episodes = 13  #70 to converge
+    gamma        = 0.9  # Discount factor
 
     for episode in range(num_episodes):
         # Reset the environment and obtain the initial observation
@@ -381,9 +388,9 @@ if __name__ == "__main__":
 
         while not terminated:
             # Extract the next agent and other necessary information from the observation
-            next_agent = observation["next_agent"]
+            next_agent      = observation["next_agent"]
             next_agent_type = agent_types[next_agent]
-            old_coalition = observation["old_coalition"]
+            old_coalition   = observation["old_coalition"]
 
             # Use the policy to select the next action
             action = policy.select_action(next_agent_type, old_coalition)
@@ -412,5 +419,8 @@ if __name__ == "__main__":
         env.render()
         print("Episode", episode, "completed.")
 
+
+    # Final results
+    print("Returns per agent:", {k: np.sum(v) for k, v in episode_rewards.items()})
     # Plot the cumulative returns per agent
     plot_cumulative_returns(returns_per_agent, num_episodes)
