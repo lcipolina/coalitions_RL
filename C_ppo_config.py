@@ -4,14 +4,11 @@
 from ray.rllib.policy.policy import PolicySpec                        # for policy mapping
 from typing import Dict                                               # for callbacks
 from ray.rllib.algorithms.callbacks import DefaultCallbacks           # for callbacks
-from ray.rllib.env import BaseEnv                                     # for callbacks
 from ray.rllib.evaluation import RolloutWorker, Episode               # for callbacks
 from ray.rllib.policy import Policy                                   # for callbacks
 from ray.air.integrations.wandb import WandbLoggerCallback
-#from ray.tune.logger import UnifiedLogger
-
 from ray.rllib.algorithms.ppo import PPOConfig
-
+from ray.rllib.env import BaseEnv                                     # for callbacks
 
 #**********************************************************************
 # Custom callbacks
@@ -78,7 +75,6 @@ class Custom_callback(DefaultCallbacks):
 # 1) Define the policies definition dict:
 # By using "PolicySpec(None...) empty, it will inferr the policy from the env
 #***********************************************************************
-
 def policy_dict(env):
     return {f"policy{i}": PolicySpec(observation_space=env.observation_space,
                             action_space=env.action_space,) for i in env._agent_ids}
