@@ -4,10 +4,16 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 
-
+''' Attempt at replicating:
+http://researchers.lille.inria.fr/~lazaric/Webpage/Publications_files/munoz2007learning.pdf'''
 
 '''  COULDNT REPLICATE THE PAPER - Agent's don't reach the max return and they don't form the optimal coalition
 
+'''  COULDNT REPLICATE THE PAPER - Agent's don't reach the max return and they don't form the optimal coalition
+
+Coalitions should form as follows:
+- 1 cooker and 2 helpers can make a cake worth 10 points
+- 4 cookers alone can make a cake worth 10 points
 Coalitions should form as follows:
 - 1 cooker and 2 helpers can make a cake worth 10 points
 - 4 cookers alone can make a cake worth 10 points
@@ -20,6 +26,7 @@ Let's consider a simplified example where there are three possible coalitions: C
 Rows represent the coalition the agent is currently in.
 Each agent can choose an action to move to any other coalition or stay in the same one.
 
+Agents have "types" (e.g., 'cooker' or 'helper') that determine their rewards based on the coalition they are in.
 Agents have "types" (e.g., 'cooker' or 'helper') that determine their rewards based on the coalition they are in.
 Each type of agent has one Q-table like this
 
@@ -37,7 +44,9 @@ Each type of agent has one Q-table like this
 '''
 
 #==============================================================================
+#==============================================================================
 # Characteristic Function Class
+#==============================================================================
 #==============================================================================
 class CharacteristicFunction:
     def __init__(self, value_function):
@@ -56,6 +65,7 @@ class CharacteristicFunction:
         return self.value_function(coalition)
 
     def calculate_marginal_contribution(self, coalition, agent):
+        """ This is to assign rewards to agents based on their marginal contribution to the coalition.
         """ This is to assign rewards to agents based on their marginal contribution to the coalition.
         Calculate the marginal contribution of a single agent to a coalition.
         :param coalition: List of agent types representing the current coalition.
@@ -360,6 +370,12 @@ def plot_cumulative_returns(returns_per_agent, num_episodes):
 #+--------------------------------- Simulation and Training ----------------------------------+
 #================================================================================================
 
+
+
+#================================================================================================
+#+--------------------------------- Simulation and Training ----------------------------------+
+#================================================================================================
+
 if __name__ == "__main__":
     # Initialize the environment and policy
     num_agents     = 6 #More than 4, run it on Colab  - needs to be even number - ideally 2 cookers and 4 helpers - but with more than 4 agents it won't run on my PC
@@ -377,6 +393,8 @@ if __name__ == "__main__":
     # Simulation and Training Loop
     num_episodes = 13  #70 to converge
     gamma        = 0.9  # Discount factor
+    num_episodes = 13  #70 to converge
+    gamma        = 0.9  # Discount factor
 
     for episode in range(num_episodes):
         # Reset the environment and obtain the initial observation
@@ -389,7 +407,9 @@ if __name__ == "__main__":
         while not terminated:
             # Extract the next agent and other necessary information from the observation
             next_agent      = observation["next_agent"]
+            next_agent      = observation["next_agent"]
             next_agent_type = agent_types[next_agent]
+            old_coalition   = observation["old_coalition"]
             old_coalition   = observation["old_coalition"]
 
             # Use the policy to select the next action
@@ -419,6 +439,9 @@ if __name__ == "__main__":
         env.render()
         print("Episode", episode, "completed.")
 
+
+    # Final results
+    print("Returns per agent:", {k: np.sum(v) for k, v in episode_rewards.items()})
 
     # Final results
     print("Returns per agent:", {k: np.sum(v) for k, v in episode_rewards.items()})
